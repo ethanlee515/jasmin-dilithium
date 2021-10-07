@@ -107,7 +107,7 @@ fn make_hint(reg u32 a0, reg u32 a1) -> reg u32 {
 	return result;
 }
 
-/* Try to not push code that doesn't compile
+
 
 // use_hint for level-3 parameters
 inline
