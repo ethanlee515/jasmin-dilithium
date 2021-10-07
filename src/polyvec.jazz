@@ -436,22 +436,22 @@ fn polyveck_caddq(reg ptr u32[Li2_k * Li2_polydeg] vec)
 	return vec;
 }
 
-/*
+
 inline
 fn polyvec_use_hint(reg ptr u32[Li2_k * Li2_polydeg] u hints)
 	-> stack u32[Li2_k * Li2_polydeg]
 {
 	reg ptr u32[Li2_polydeg] hints_comp u_comp;
 	inline int i;
-	stack u32 result_comp;
+	stack u32[Li2_polydeg] result_comp;
 	stack u32[Li2_k * Li2_polydeg] result;
 
 	for i = 0 to Li2_k {
 		hints_comp = hints[i * Li2_polydeg : Li2_polydeg];
 		u_comp = u[i * Li2_polydeg : Li2_polydeg];
-		result_comp = poly_use_hint(hints_comp, u_comp);
+		result_comp = poly_use_hint(u_comp, result_comp, hints_comp);
 		result[i * Li2_polydeg : Li2_polydeg] = result_comp;
 	}
 	return result;
 }
-*/
+

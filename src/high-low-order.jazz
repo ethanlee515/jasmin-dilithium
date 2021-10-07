@@ -114,19 +114,21 @@ inline
 fn use_hint(reg u32 hint, reg u32 a)
 	-> reg u32
 {
-	reg u32 a0;
-	reg u32 a1;
+	reg u32 a0 a1;
+	reg u32 result;
 	a0, a1 = decompose(a);
-	if (hint == 0)
-		return a1;
-	if (a0 > 0)
+	if (hint == 0){
+		result = a1;
+	}
+	if (a0 > 0){
 		a1 += 1;
 		a1 &= 15;
-		return a1;
-	else
+		result = a1;
+	}
+	else {
 		a1 -= 1;
 		a1 &= 15;
-		return  a1;
+		result = a1;
+	}
+	return result;
 }
-
-*/
