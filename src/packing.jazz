@@ -1,4 +1,4 @@
-require "params.jaz:xz"
+require "params.jazz"
 require "montgomery.jazz"
 
 inline
