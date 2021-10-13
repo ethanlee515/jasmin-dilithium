@@ -1,4 +1,4 @@
-require "params.jazz"
+require "params.jaz:xz"
 require "montgomery.jazz"
 
 inline
@@ -110,7 +110,101 @@ fn polyt1_pack(reg ptr u32[Li2_polydeg] t1, reg ptr u8[Li2_pack_t1len] buf)
 	return buf;
 }
 
-	inline
+inline
+fn polyt1_unpack(reg ptr u8[Li2_pack_t1len] packed_t1, reg ptr u8[Li2_pack_t1len] buf)
+	-> reg ptr u32[Li2_polydeg] 
+{
+	reg u64 i;
+	reg u64 addr;
+	reg u32 x x1;
+	reg u8 c;
+
+	i = 0;
+	while(i < Li2_polydeg / 4){
+		// buf[4*i+0] = packed_t1[5*i+0] >> 0 | ((uint32_t)a[5*i+1] << 8)) & 0x3FF;
+		addr = 5;
+		addr *= i;
+		x = (8u) packed_t1[(int) addr];
+	
+		addr = 5;
+		addr *= i;
+		addr += 1;
+		x1 = (32u) packed_t1[(int) addr];
+		x1 <<= 8;
+		x |= x1;
+		x &= 0x1FFF;
+
+		addr = 4;
+		addr *= i;
+		buf[(int) addr] = x;
+
+		// buf[4*i+1] = ((a[5*i+1] >> 2) | ((uint32_t)a[5*i+2] << 6)) & 0x3FF;
+		addr = 5;
+		addr *= i;
+		addr += 1;
+		x = (8u) packed_t1[(int) addr];
+		x >>= 2;
+
+		addr = 5;
+		addr *= i;
+		addr += 2;
+		x1 = (32u) packed_t1[(int) addr];
+		x1 <<= 6;
+		x |= x1;
+		x &= 0x3FF;
+
+		addr = 4;
+		addr *= i;
+		addr += 1;
+		buf[(int) addr] = x;
+
+		// buf[4*i+2] = ((a[5*i+2] >> 4) | ((uint32_t)a[5*i+3] << 4)) & 0x3FF;
+		addr = 5;
+		addr *= i;
+		addr += 2;
+		x = (8u) packed_t1[(int) addr];
+		x >>= 4;
+		
+		addr = 5;
+		addr *= i;
+		addr += 2;
+		x1 = (32u) packed_t1[(int) addr];
+		x1 <<= 4;
+		x |= x1;
+		x &= 0x3FF;
+
+		addr = 4;
+		addr *= i;
+		addr += 2;
+		buf[(int) addr] = x;
+
+		// buf[4*i+3] = ((a[5*i+3] >> 6) | ((uint32_t)a[5*i+4] << 2)) & 0x3FF;
+		addr = 5;
+		addr *= i;
+		addr += 3;
+		x = (8u) packed_t1[(int) addr];
+		x >>= 6;
+		
+		addr = 5;
+		addr *= i;
+		addr += 4;
+		x1 = (32u) packed_t1[(int) addr];
+		x1 <<= 2;
+		x |= x1;
+		x &= 0x3FF;
+		
+		addr = 4;
+		addr *= i;
+		addr += 3;
+		buf[(int) addr] = x;
+
+		i += 1;
+	}
+
+	return buf;
+}
+
+inline
 fn rho_pack(reg ptr u8[32] in out)
 	-> reg ptr u8[32]
 {
@@ -945,3 +1039,33 @@ fn pack_w1(reg ptr u32[Li2_k * Li2_polydeg] w1)
 	}
 	return buf;
 }
+
+
+
+inline
+fn unpack_pk(reg ptr u8[Li2_PK_LEN] pk)
+	-> stack u8[32],
+	stack u32[Li2_k * Li2_polydeg] 
+{
+	stack u8[32] rho;
+	stack u32[Li2_k * Li2_polydeg] t1;
+
+	// temp vars.
+	inline int i;
+	reg ptr u32[Li2_polydeg] poly_to_unpack;
+
+	// unpack rho
+	for i = 0 to 32{
+		rho[ii] = pk[i];
+	}
+
+	// unpack t1
+	for i = 0 to Li2_k{
+		poly_to_unpack = t1[i * Li2_polydeg : Li2_polydeg];
+		poly_to_unpack = polyt1_unpack(poly_to_unpack, 
+			pk[32 + i * Li2_pack_t1len : Li2_pack_t1len]);
+		t1[i * Li2_polydeg : Li2_polydeg] = poly_to_unpack;
+	}
+	
+	return rho, t1;
+}			
