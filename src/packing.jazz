@@ -111,7 +111,7 @@ fn polyt1_pack(reg ptr u32[Li2_polydeg] t1, reg ptr u8[Li2_pack_t1len] buf)
 }
 
 inline
-fn polyt1_unpack(reg ptr u8[Li2_pack_t1len] packed_t1, reg ptr u8[Li2_pack_t1len] buf)
+fn polyt1_unpack(reg ptr u8[Li2_pack_t1len] packed_t1, reg ptr u32[Li2_polydeg] buf)
 	-> reg ptr u32[Li2_polydeg] 
 {
 	reg u64 i;
@@ -122,9 +122,9 @@ fn polyt1_unpack(reg ptr u8[Li2_pack_t1len] packed_t1, reg ptr u8[Li2_pack_t1len
 	i = 0;
 	while(i < Li2_polydeg / 4){
 		// buf[4*i+0] = packed_t1[5*i+0] >> 0 | ((uint32_t)a[5*i+1] << 8)) & 0x3FF;
-		addr = 5;
+		addr = (64u) 5;
 		addr *= i;
-		x = (8u) packed_t1[(int) addr];
+		x = (32u) packed_t1[(int) addr];
 	
 		addr = 5;
 		addr *= i;
@@ -139,10 +139,10 @@ fn polyt1_unpack(reg ptr u8[Li2_pack_t1len] packed_t1, reg ptr u8[Li2_pack_t1len
 		buf[(int) addr] = x;
 
 		// buf[4*i+1] = ((a[5*i+1] >> 2) | ((uint32_t)a[5*i+2] << 6)) & 0x3FF;
-		addr = 5;
+		addr = (64u) 5;
 		addr *= i;
 		addr += 1;
-		x = (8u) packed_t1[(int) addr];
+		x = (32u) packed_t1[(int) addr];
 		x >>= 2;
 
 		addr = 5;
@@ -162,7 +162,7 @@ fn polyt1_unpack(reg ptr u8[Li2_pack_t1len] packed_t1, reg ptr u8[Li2_pack_t1len
 		addr = 5;
 		addr *= i;
 		addr += 2;
-		x = (8u) packed_t1[(int) addr];
+		x = (32u) packed_t1[(int) addr];
 		x >>= 4;
 		
 		addr = 5;
@@ -182,7 +182,7 @@ fn polyt1_unpack(reg ptr u8[Li2_pack_t1len] packed_t1, reg ptr u8[Li2_pack_t1len
 		addr = 5;
 		addr *= i;
 		addr += 3;
-		x = (8u) packed_t1[(int) addr];
+		x = (32u) packed_t1[(int) addr];
 		x >>= 6;
 		
 		addr = 5;
@@ -1056,16 +1056,102 @@ fn unpack_pk(reg ptr u8[Li2_PK_LEN] pk)
 
 	// unpack rho
 	for i = 0 to 32{
-		rho[ii] = pk[i];
+		rho[i] = pk[i];
 	}
 
 	// unpack t1
 	for i = 0 to Li2_k{
 		poly_to_unpack = t1[i * Li2_polydeg : Li2_polydeg];
-		poly_to_unpack = polyt1_unpack(poly_to_unpack, 
-			pk[32 + i * Li2_pack_t1len : Li2_pack_t1len]);
+		poly_to_unpack = polyt1_unpack(pk[32 + i * Li2_pack_t1len : Li2_pack_t1len],
+			poly_to_unpack);
 		t1[i * Li2_polydeg : Li2_polydeg] = poly_to_unpack;
 	}
 	
 	return rho, t1;
-}			
+}
+
+inline
+fn unpack_sig(reg ptr u8[Li2_SIGN_LEN] sig)
+	-> stack u8[32],
+	stack u32[Li2_l * Li2_polydeg],
+	stack u32[Li2_k * Li2_polydeg],
+	reg u8
+{	
+	stack u8[32] c_tilde;
+	stack u32[Li2_l * Li2_polydeg] z;
+	stack u32[Li2_k * Li2_polydeg] h;
+	reg u8 result;
+	reg u64 i;
+	reg u8 c;
+	reg u8 sig_s;
+	stack u64 k;
+	stack u64 j;
+	reg u64 addr;
+	reg u64 reg_j;
+	reg u8 sig_omegai;
+	reg ptr u8[Li2_pack_zlen] z_to_unpack;
+	reg ptr u32[Li2_polydeg] z_buf;
+	inline int ii;
+	
+	result = 0;
+	// Decode c_tilde
+	i = 0;
+	while(i < 32){
+		c = sig[(int) i];
+		c_tilde[(int) i] = c;
+		i += 1;
+	}
+	
+	// Decode z
+	for ii = 0 to Li2_l{
+		z_to_unpack = sig[32 + Li2_pack_zlen * ii : Li2_pack_zlen];
+		z_buf = z[ii * Li2_polydeg : Li2_polydeg];
+		z_buf = polyz_unpack(z_buf, z_to_unpack);
+		z[ii * Li2_polydeg : Li2_polydeg] = z_buf;	
+	}
+
+	// Decode h
+	k = 0;
+	i = 0;
+	while(i < Li2_k){
+		j = 0;
+		while(j < Li2_polydeg){
+			addr = Li2_polydeg;
+			addr *= i;
+			reg_j = j;
+			addr += reg_j;
+			h[(int) addr] = 0;
+			j += 1;
+		}	
+		sig_omegai = sig[(int) (Li2_omega + i)];
+		if(sig_omegai < k || sig_omegai > Li2_omega){
+			result = 1;
+		}
+		j = k;
+		while (j < sig_omegai){
+		//for j = k to (int) (sig_omegai){
+			if(j > k && sig[(int) j] <= sig[(int) (j - 1)]){
+				result = 1;
+			}
+			addr = Li2_polydeg;
+			addr *= i;
+			reg_j = (64u) sig[(int) j];
+			addr += reg_j;
+			h[(int) addr] = 1;
+		}
+		k = (64u) sig[(int) (Li2_omega + i)];
+		j += 1;
+	}
+	
+	// Extra indices are zero for strong unforgeability
+	j = k;
+	while (j < Li2_omega){
+	//for j = k to Li2_omega{
+		sig_s = sig[(int) j];
+		if(sig_s != 0){
+			result = 1;
+		}
+		j += 1;
+	}
+	return c_tilde, z, h, result;
+} 
