@@ -221,6 +221,7 @@ fn poly_make_hint(reg ptr u32[Li2_polydeg] f0 f1 hints)
 	return weight, hints;
 }
 
+
 inline
 fn poly_use_hint(reg ptr u32[Li2_polydeg] f b hints)
 	-> reg ptr u32[Li2_polydeg]
@@ -240,6 +241,23 @@ fn poly_use_hint(reg ptr u32[Li2_polydeg] f b hints)
 	return b;
 }		
 
+inline
+fn poly_shiftl(reg ptr u32[Li2_polydeg] a)
+	-> stack u32[Li2_polydeg]
+{
+	reg u64 i;
+	stack u32[Li2_polydeg] shifted_a;
+	reg u32 shift;
+
+	i = 0;
+	while(i < Li2_polydeg){
+		shift = a[(int) i];
+		shift <<= Li2_d;
+		shifted_a[(int) i] = shift;
+		i += 1;
+	}
+	return shifted_a;
+}
 
 inline
 fn poly_checknorm(reg ptr u32[Li2_polydeg] f, inline int threshold)

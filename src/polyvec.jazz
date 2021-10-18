@@ -270,6 +270,23 @@ fn deep_copy_vecl(reg ptr u32[Li2_l * Li2_polydeg] vec)
 }
 
 inline
+fn deep_copy_veck(reg ptr u32[Li2_k * Li2_polydeg] vec)
+	-> stack u32[Li2_k * Li2_polydeg]
+{
+	stack u32[Li2_k * Li2_polydeg] dest;
+	reg u64 i;
+	reg u32 entry;
+
+	i = 0;
+	while(i < Li2_k * Li2_polydeg){
+		entry = vec[(int) i];
+		dest[(int) i] = entry;
+		i += 1;
+	}
+	return dest;
+}
+
+inline
 fn decompose_vec(reg ptr u32[Li2_k * Li2_polydeg] vec)
 	-> stack u32[Li2_k * Li2_polydeg], stack u32[Li2_k * Li2_polydeg]
 {
@@ -425,6 +442,21 @@ fn polyvecl_caddq(reg ptr u32[Li2_l * Li2_polydeg] vec)
 }
 
 inline
+fn polyvec_shiftl(reg ptr u32[Li2_k * Li2_polydeg] t)
+	-> stack u32[Li2_k * Li2_polydeg]
+{
+	inline int ii;
+	reg u32 shift;
+	
+	for ii = 0 to Li2_k{
+		t[ii * Li2_polydeg : Li2_polydeg] = 
+			poly_shiftl(t[ii * Li2_polydeg : Li2_polydeg]);
+	}
+	return t;
+}
+
+
+inline
 fn polyveck_caddq(reg ptr u32[Li2_k * Li2_polydeg] vec)
 	-> reg ptr u32[Li2_k * Li2_polydeg]
 {
@@ -454,4 +486,3 @@ fn polyvec_use_hint(reg ptr u32[Li2_k * Li2_polydeg] u hints)
 	}
 	return result;
 }
-

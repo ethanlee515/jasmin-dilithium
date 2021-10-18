@@ -1,0 +1,83 @@
+require "params.jazz"
+require "hashing.jazz"
+require "polyvec.jazz"
+require "fft.jazz"
+require "packing.jazz"
+require "gen_matrix.jazz"
+
+inline
+
+fn verify(stack u8[Li2_SIGN_LEN] sig,
+	  reg u64 ptr_m,
+	  reg u64 m_len,
+	  stack u8[Li2_PK_LEN] pk )
+	 -> stack u8
+{
+
+	// Declare variables
+	stack u8[32] c_tilde, rho, c1_tilde;
+	stack u32[Li2_l * Li2_polydeg] z, fft_z;
+	stack u32[Li2_k * Li2_polydeg] h, t1;
+	reg u8 unpack_result, reg_normcheck;
+	stack u8[64] mu;
+	stack u8[32] tr;
+	stack u32[Li2_polydeg] challenge;
+	stack u32[Li2_k * Li2_l * Li2_polydeg] fft_matA;
+	stack u8 result, normcheck_result;
+	stack u8[Li2_pack_w1len] packed_w1;
+	stack u32[Li2_k * Li2_polydeg] fft_Az, fft_t1, fft_ct1;
+	stack u32[Li2_k * Li2_polydeg] ct1, Az, Az_ct1, w1;	
+	reg u8 reg_c0, reg_c1, i;	
+
+	// Unpack signature/pk.
+	c_tilde, z, h, unpack_result = unpack_sig(sig);
+	rho, t1 = unpack_pk(pk);
+	t1 = polyvec_shiftl(t1);
+	result = 1;	
+	
+	// I didn't add siglen check.
+	if (unpack_result != 0){
+		result = 0;
+	}
+	
+	// Check the norm of z
+	normcheck_result = checknorm_vecl(z, (int) (Li2_gamma1 - Li2_beta));
+	reg_normcheck = normcheck_result;
+	if (reg_normcheck != 0){
+		result = 0;
+	}	
+
+	// Compute CRH(H(rho, t1), msg)
+	tr = shake256_of_pk(pk, tr);	
+	mu = hash_tr_m(tr, m_len, ptr_m);
+
+	// Compute challenge
+	challenge = sampleInBall(challenge, c_tilde);
+	
+	// Matrix-vector multiplication; Compute Az - c 2^d t1
+	fft_matA = gen_matrix(rho);
+	fft_z = deep_copy_vecl(z);
+	fft_z = fft_vec(fft_z);
+	fft_Az = mult_mat_vec(fft_matA, fft_z);
+	challenge = fft(challenge);
+	fft_t1 = deep_copy_veck(t1);
+	fft_ct1 = mult_scalar_veck(challenge, t1);
+	ct1 = ifft_to_mont_vec(fft_ct1);
+	Az = ifft_to_mont_vec(fft_Az);	
+	Az_ct1 = subtract_veck(Az, ct1);
+	w1 = polyvec_use_hint(Az_ct1, h);
+	packed_w1 = pack_w1(w1);
+
+	// Call random oracle and verify challenge
+	c1_tilde = hash_mu_w1(mu, packed_w1);
+	i = 0;
+	while(i < 32){
+		reg_c0 = c_tilde[(int) i];
+		reg_c1 = c1_tilde[(int) i];
+		if (reg_c0 != reg_c1){
+			result = 0;
+		}
+		i += 1;
+	}
+	return result;
+}
