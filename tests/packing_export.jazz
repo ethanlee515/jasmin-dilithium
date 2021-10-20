@@ -30,6 +30,33 @@ fn pack_t1_jazz(reg u64 poly_ptr, reg u64 buf_ptr)
 	}
 }
 
+//fn polyt1_unpack(reg ptr u8[Li2_pack_t1len] packed_t1, reg ptr u32[Li2_polydeg] buf)
+//void polyt1_unpack_jazz(uint8_t buf[POLYT1_PACKEDBYTES], uint32_t t1[N]);
+export
+fn polyt1_unpack_jazz(reg u64 buf_ptr, reg u64 t1_ptr) {
+	stack u8[Li2_pack_t1len] buf;
+	stack u32[Li2_polydeg] t1;
+	reg u64 i;
+	reg u8 c;
+	reg u32 v;
+
+	i = 0;
+	while(i < Li2_pack_t1len) {
+		c = (u8)[buf_ptr + i];
+		buf[(int) i] = c;
+		i += 1;
+	}
+
+	t1 = polyt1_unpack(buf, t1);
+
+	i = 0;
+	while(i < Li2_polydeg) {
+		v = t1[(int) i];
+		(u32)[t1_ptr + 4 * i] = v;
+		i += 1;
+	}
+}
+
 export
 fn polyz_unpack_jazz(reg u64 rp, reg u64 ap) {
 	stack u32[Li2_polydeg] r;

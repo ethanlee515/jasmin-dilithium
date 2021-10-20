@@ -25,6 +25,7 @@ using std::array;
 
 extern "C" {
 	void pack_t1_jazz(uint32_t p[N], uint8_t buf[POLYT1_PACKEDBYTES]);
+	void polyt1_unpack_jazz(uint8_t buf[POLYT1_PACKEDBYTES], int32_t t1[N]);
 	void polyz_unpack_jazz(int32_t p[N], uint8_t buf[POLYZ_PACKEDBYTES]);
 	void polyz_pack_jazz(uint8_t buf[POLYZ_PACKEDBYTES], int32_t p[N]);
 	void polyeta_unpack_jazz(int32_t p[N], uint8_t buf[POLYETA_PACKEDBYTES]);
@@ -65,9 +66,7 @@ void test_pack_t1() {
 
 	uint8_t buf_ref[POLYT1_PACKEDBYTES];
 
-	for(int i = 0; i < K; ++i) {
-		pqcrystals_dilithium3_ref_polyt1_pack(buf_ref, &p);
-	}
+	pqcrystals_dilithium3_ref_polyt1_pack(buf_ref, &p);
 
 	uint8_t buf_jazz[POLYT1_PACKEDBYTES];
 	pack_t1_jazz(uint_p, buf_jazz);
@@ -77,7 +76,31 @@ void test_pack_t1() {
 	}
 }
 
-//TODO implement test_unpack_t1
+void test_unpack_t1() {
+	poly p;
+	for(int i = 0; i < N; ++i) {
+		int32_t val = sample_t1_component(); 
+		p.coeffs[i] = val;
+	}
+
+	uint8_t buf[POLYT1_PACKEDBYTES];
+	pqcrystals_dilithium3_ref_polyt1_pack(buf, &p);
+
+	poly p_ref;
+	int32_t p_jazz[N];
+
+	pqcrystals_dilithium3_ref_polyt1_unpack(&p, buf);
+	polyt1_unpack_jazz(buf, p_jazz);
+
+	for(int i = 0; i < N; ++i) {
+		if(p_jazz[i] != p_ref.coeffs[i]) {
+			PRINT(i);
+			PRINT(p_jazz[i]);
+			PRINT(p_ref.coeffs[i]);
+			throw runtime_error("test failed at " + to_string(__LINE__));
+		}
+	}
+}
 
 void test_pack_z() {
 	poly p;
@@ -225,6 +248,7 @@ void test_pack_signature() {
 
 int main() {
 	test_pack_t1();
+	test_unpack_t1();
 	test_unpack_z();
 	test_unpack_eta();
 	test_unpack_t0();
