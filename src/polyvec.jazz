@@ -446,8 +446,7 @@ fn polyvec_shiftl(reg ptr u32[Li2_k * Li2_polydeg] t)
 	-> stack u32[Li2_k * Li2_polydeg]
 {
 	inline int ii;
-	reg u32 shift;
-	
+		
 	for ii = 0 to Li2_k{
 		t[ii * Li2_polydeg : Li2_polydeg] = 
 			poly_shiftl(t[ii * Li2_polydeg : Li2_polydeg]);
@@ -481,6 +480,7 @@ fn polyvec_use_hint(reg ptr u32[Li2_k * Li2_polydeg] u hints)
 	for i = 0 to Li2_k {
 		hints_comp = hints[i * Li2_polydeg : Li2_polydeg];
 		u_comp = u[i * Li2_polydeg : Li2_polydeg];
+		result_comp = result[i * Li2_polydeg : Li2_polydeg];
 		result_comp = poly_use_hint(u_comp, result_comp, hints_comp);
 		result[i * Li2_polydeg : Li2_polydeg] = result_comp;
 	}

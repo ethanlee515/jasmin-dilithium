@@ -18,7 +18,8 @@ fn verify(stack u8[Li2_SIGN_LEN] sig,
 	stack u8[32] c_tilde, rho, c1_tilde;
 	stack u32[Li2_l * Li2_polydeg] z, fft_z;
 	stack u32[Li2_k * Li2_polydeg] h, t1;
-	reg u8 unpack_result, reg_normcheck;
+	reg u32 unpack_result;
+	reg u8 reg_normcheck;
 	stack u8[64] mu;
 	stack u8[32] tr;
 	stack u32[Li2_polydeg] challenge;
@@ -28,6 +29,7 @@ fn verify(stack u8[Li2_SIGN_LEN] sig,
 	stack u32[Li2_k * Li2_polydeg] fft_Az, fft_t1, fft_ct1;
 	stack u32[Li2_k * Li2_polydeg] ct1, Az, Az_ct1, w1;	
 	reg u8 reg_c0, reg_c1, i;	
+	reg u64 addr_i;
 
 	// Unpack signature/pk.
 	c_tilde, z, h, unpack_result = unpack_sig(sig);
@@ -72,8 +74,9 @@ fn verify(stack u8[Li2_SIGN_LEN] sig,
 	c1_tilde = hash_mu_w1(mu, packed_w1);
 	i = 0;
 	while(i < 32){
-		reg_c0 = c_tilde[(int) i];
-		reg_c1 = c1_tilde[(int) i];
+		addr_i = (64u) i;
+		reg_c0 = c_tilde[(int) addr_i];
+		reg_c1 = c1_tilde[(int) addr_i];
 		if (reg_c0 != reg_c1){
 			result = 0;
 		}

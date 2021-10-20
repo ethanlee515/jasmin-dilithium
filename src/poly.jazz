@@ -243,20 +243,19 @@ fn poly_use_hint(reg ptr u32[Li2_polydeg] f b hints)
 
 inline
 fn poly_shiftl(reg ptr u32[Li2_polydeg] a)
-	-> stack u32[Li2_polydeg]
+	-> reg ptr u32[Li2_polydeg]
 {
 	reg u64 i;
-	stack u32[Li2_polydeg] shifted_a;
 	reg u32 shift;
 
 	i = 0;
 	while(i < Li2_polydeg){
 		shift = a[(int) i];
 		shift <<= Li2_d;
-		shifted_a[(int) i] = shift;
+		a[(int) i] = shift;
 		i += 1;
 	}
-	return shifted_a;
+	return a;
 }
 
 inline

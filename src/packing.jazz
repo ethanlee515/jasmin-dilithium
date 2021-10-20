@@ -1049,6 +1049,7 @@ fn unpack_pk(reg ptr u8[Li2_PK_LEN] pk)
 {
 	stack u8[32] rho;
 	stack u32[Li2_k * Li2_polydeg] t1;
+	reg u8 c;
 
 	// temp vars.
 	inline int i;
@@ -1056,7 +1057,8 @@ fn unpack_pk(reg ptr u8[Li2_PK_LEN] pk)
 
 	// unpack rho
 	for i = 0 to 32{
-		rho[i] = pk[i];
+		c = pk[i];
+		rho[i] = c;
 	}
 
 	// unpack t1
@@ -1075,25 +1077,29 @@ fn unpack_sig(reg ptr u8[Li2_SIGN_LEN] sig)
 	-> stack u8[32],
 	stack u32[Li2_l * Li2_polydeg],
 	stack u32[Li2_k * Li2_polydeg],
-	reg u8
+	reg u32
 {	
 	stack u8[32] c_tilde;
 	stack u32[Li2_l * Li2_polydeg] z;
 	stack u32[Li2_k * Li2_polydeg] h;
-	reg u8 result;
+	reg u32 result;
 	reg u64 i;
-	reg u8 c;
+	reg u8 c, temp_k;
 	reg u8 sig_s;
 	stack u64 k;
+	reg u64 reg_k;
 	stack u64 j;
-	reg u64 addr;
+	reg u64 addr, addr_j, addr_oi;
 	reg u64 reg_j;
-	reg u8 sig_omegai;
+	reg u64 sig_omegai;
 	reg ptr u8[Li2_pack_zlen] z_to_unpack;
 	reg ptr u32[Li2_polydeg] z_buf;
 	inline int ii;
-	
+	reg u8 sig_j, sig_j1;
+	reg u32 one;
+
 	result = 0;
+	one = 1;
 	// Decode c_tilde
 	i = 0;
 	while(i < 32){
@@ -1122,24 +1128,31 @@ fn unpack_sig(reg ptr u8[Li2_SIGN_LEN] sig)
 			addr += reg_j;
 			h[(int) addr] = 0;
 			j += 1;
-		}	
-		sig_omegai = sig[(int) (Li2_omega + i)];
-		if(sig_omegai < k || sig_omegai > Li2_omega){
-			result = 1;
 		}
+		reg_k = k;	
+		sig_omegai = (64u) sig[(int) (Li2_omega + i)];
+		result = one if (sig_omegai < reg_k);
+		result = one if (sig_omegai > Li2_omega);
 		j = k;
 		while (j < sig_omegai){
-		//for j = k to (int) (sig_omegai){
-			if(j > k && sig[(int) j] <= sig[(int) (j - 1)]){
-				result = 1;
+			if(reg_j > reg_k){
+				addr_j = reg_j;
+				sig_j = sig[(int) addr_j];
+				addr_j -= 1;
+				sig_j1 = sig[(int) addr_j];
+				if(sig_j <= sig_j1){
+					result = 1;
+				}
 			}
 			addr = Li2_polydeg;
 			addr *= i;
-			reg_j = (64u) sig[(int) j];
+			addr_j = j;
+			reg_j = (64u) sig[(int) addr_j];
 			addr += reg_j;
 			h[(int) addr] = 1;
 		}
-		k = (64u) sig[(int) (Li2_omega + i)];
+		temp_k = sig[(int) (Li2_omega + i)];
+		k = (64u) temp_k;
 		j += 1;
 	}
 	
@@ -1147,7 +1160,8 @@ fn unpack_sig(reg ptr u8[Li2_SIGN_LEN] sig)
 	j = k;
 	while (j < Li2_omega){
 	//for j = k to Li2_omega{
-		sig_s = sig[(int) j];
+		addr_j = j;
+		sig_s = sig[(int) addr_j];
 		if(sig_s != 0){
 			result = 1;
 		}
