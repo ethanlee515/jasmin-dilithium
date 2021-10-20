@@ -44,6 +44,7 @@ int main() {
 
 	uint8_t signature[pqcrystals_dilithium3_BYTES];
 
+	size_t siglen;
 	pqcrystals_dilithium3_ref_signature(signature, &siglen, m, 1000, sk);
 
 	PRINT(int(verify_jazz(signature, m, 1000, pk)));
