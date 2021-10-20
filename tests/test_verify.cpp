@@ -28,29 +28,41 @@ uint8_t sampleByte() {
 	return distrib(gen);
 }
 
-int main() {
+void test_verify() {
 	uint8_t pk[pqcrystals_dilithium3_PUBLICKEYBYTES];
 	uint8_t sk[pqcrystals_dilithium3_SECRETKEYBYTES];
+	pqcrystals_dilithium3_ref_keypair(pk, sk);
 
-	uint8_t randomness[32] = { 0 };
-	for(int i = 0; i < 32; ++i)
-		randomness[i] = sampleByte();
-
-	pqcrystals_dilithium3_ref_seeded_keypair(pk, sk, randomness);
+	uint8_t pk2[pqcrystals_dilithium3_PUBLICKEYBYTES];
+	uint8_t sk2[pqcrystals_dilithium3_SECRETKEYBYTES];
+	pqcrystals_dilithium3_ref_keypair(pk2, sk2);
 
 	uint8_t m[1000];
-	for(int i = 0; i < 1000; ++i)
+	uint8_t m2[1000];
+	for(int i = 0; i < 1000; ++i) {
 		m[i] = sampleByte();
+		m2[i] = sampleByte();
+	}
 
-	uint8_t signature[pqcrystals_dilithium3_BYTES];
+	uint8_t sig[pqcrystals_dilithium3_BYTES];
+	uint8_t sig2[pqcrystals_dilithium3_BYTES];
 
 	size_t siglen;
-	pqcrystals_dilithium3_ref_signature(signature, &siglen, m, 1000, sk);
+	pqcrystals_dilithium3_ref_signature(sig, &siglen, m, 1000, sk);
+	pqcrystals_dilithium3_ref_signature(sig2, &siglen, m, 1000, sk);
 
-	PRINT(int(verify_jazz(signature, m, 1000, pk)));
+	if(!verify_jazz(sig, m, 1000, pk))
+		throw runtime_error("test failed at " + to_string(__LINE__));
 
+	if(verify_jazz(sig2, m2, 1000, pk))
+		throw runtime_error("test failed at " + to_string(__LINE__));
 
-	//PRINT(memcmp(signature_ref, signature_jazz, pqcrystals_dilithium3_BYTES));
+	if(verify_jazz(sig2, m, 1000, pk))
+		throw runtime_error("test failed at " + to_string(__LINE__));
+}
 
+int main() {
+	for(int i = 0; i < 100; ++i)
+		test_verify();
 	return 0;
 }
