@@ -132,7 +132,8 @@ fn polyt1_unpack(reg ptr u8[Li2_pack_t1len] packed_t1, reg ptr u32[Li2_polydeg] 
 		x1 = (32u) packed_t1[(int) addr];
 		x1 <<= 8;
 		x |= x1;
-		x &= 0x1FFF;
+		//x &= 0x1;
+		x &= 0x3FF;
 
 		addr = 4;
 		addr *= i;
