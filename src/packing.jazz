@@ -1152,7 +1152,9 @@ fn unpack_sig(reg ptr u8[Li2_SIGN_LEN] sig)
 			h[(int) addr] = 1;
 		}
 		temp_k = sig[(int) (Li2_omega + i)];
-		k = (64u) temp_k;
+		reg_k = (64u) temp_k;
+		k = (64u) reg_k;
+
 		j += 1;
 	}
 	
