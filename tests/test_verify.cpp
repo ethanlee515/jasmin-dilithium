@@ -1,6 +1,8 @@
 #include <iostream>
 #include <random>
 #include <cstring>
+#include <stdexcept>
+#include <string>
 
 extern "C" {
 #include "../dilithium/ref/api.h"
@@ -11,6 +13,8 @@ using std::cout;
 using std::endl;
 using std::vector;
 using std::memcmp;
+using std::runtime_error;
+using std::to_string;
 
 #define PRINT(X) cout << (#X) << " = " << (X) << endl
 
