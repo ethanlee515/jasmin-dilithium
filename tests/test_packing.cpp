@@ -86,17 +86,15 @@ void test_unpack_t1() {
 	uint8_t buf[POLYT1_PACKEDBYTES];
 	pqcrystals_dilithium3_ref_polyt1_pack(buf, &p);
 
-	poly p_ref;
 	int32_t p_jazz[N];
 
-	pqcrystals_dilithium3_ref_polyt1_unpack(&p, buf);
 	polyt1_unpack_jazz(buf, p_jazz);
 
 	for(int i = 0; i < N; ++i) {
-		if(p_jazz[i] != p_ref.coeffs[i]) {
+		if(p_jazz[i] != p.coeffs[i]) {
 			PRINT(i);
 			PRINT(p_jazz[i]);
-			PRINT(p_ref.coeffs[i]);
+			PRINT(p.coeffs[i]);
 			throw runtime_error("test failed at " + to_string(__LINE__));
 		}
 	}
