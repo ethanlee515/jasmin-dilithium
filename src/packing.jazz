@@ -1151,12 +1151,13 @@ fn unpack_sig(reg ptr u8[Li2_SIGN_LEN] sig)
 			reg_j = (64u) sig[(int) addr_j];
 			addr += reg_j;
 			h[(int) addr] = 1;
+			j += 1;
 		}
 		temp_k = sig[(int) (Li2_omega + i)];
 		reg_k = (64u) temp_k;
 		k = (64u) reg_k;
 
-		j += 1;
+		i += 1;
 	}
 	
 	// Extra indices are zero for strong unforgeability

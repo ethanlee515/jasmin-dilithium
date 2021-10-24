@@ -59,10 +59,14 @@ fn verify(stack u8[Li2_SIGN_LEN] sig,
 	// Matrix-vector multiplication; Compute Az - c 2^d t1
 	fft_matA = gen_matrix(rho);
 	fft_z = deep_copy_vecl(z);
+	fft_z = polyvecl_caddq(fft_z);
 	fft_z = fft_vec(fft_z);
 	fft_Az = mult_mat_vec(fft_matA, fft_z);
+	change = poly_caddq(challenge);
 	challenge = fft(challenge);
 	fft_t1 = deep_copy_veck(t1);
+	fft_t1 = polyveck_caddq(fft_t1);
+	fft_t1 = fft_vec(fft_t1);
 	fft_ct1 = mult_scalar_veck(challenge, t1);
 	ct1 = ifft_to_mont_vec(fft_ct1);
 	Az = ifft_to_mont_vec(fft_Az);	
