@@ -32,6 +32,10 @@ extern "C" {
 	void polyt0_unpack_jazz(int32_t p[N], uint8_t buf[POLYETA_PACKEDBYTES]);
 	void pack_signature_jazz(uint8_t c_tilde[32],
 			int32_t z[L * N], int32_t h[K * N], uint8_t sig[CRYPTO_BYTES]);
+	uint32_t unpack_signature_jazz(uint8_t sig[CRYPTO_BYTES],
+			uint8_t c_tilde[32],
+			int32_t z[L * N],
+			int32_t h[K * N]);
 }
 
 uint8_t sampleByte() {
@@ -243,6 +247,52 @@ void test_pack_signature() {
 	}
 }
 
+void test_unpack_signature(int test_unpack_sig_attempt_number) {
+	PRINT(test_unpack_sig_attempt_number);
+
+	uint8_t pk[pqcrystals_dilithium3_PUBLICKEYBYTES];
+	uint8_t sk[pqcrystals_dilithium3_SECRETKEYBYTES];
+	pqcrystals_dilithium3_ref_keypair(pk, sk);
+
+	uint8_t m[1000];
+	for(int i = 0; i < 1000; ++i) {
+		m[i] = sampleByte();
+	}
+
+	uint8_t sig[pqcrystals_dilithium3_BYTES];
+
+	size_t siglen;
+	pqcrystals_dilithium3_ref_signature(sig, &siglen, m, 1000, sk);
+
+	uint8_t c_ref[SEEDBYTES];
+	polyvecl z_ref;
+	polyveck h_ref;
+
+	unpack_sig(c_ref, &z_ref, &h_ref, sig);
+
+	uint8_t c_jazz[SEEDBYTES];
+	int32_t z_jazz[L * N];
+	int32_t h_jazz[K * N];
+	uint32_t result = unpack_signature_jazz(sig, c_jazz, z_jazz, h_jazz);
+
+	if(result != 0)
+		throw runtime_error("test failed at " + to_string(__LINE__));
+
+	if(memcmp(c_ref, c_jazz, SEEDBYTES) != 0)
+		throw runtime_error("test failed at " + to_string(__LINE__));
+
+	for(int i = 0; i < L; ++i) {
+		for(int j = 0; j < N; ++j) {
+			if(z_ref.vec[i].coeffs[j] != z_jazz[i * N + j])
+				throw runtime_error("test failed at " + to_string(__LINE__));
+		}
+	}
+
+	for(int i = 0; i < K; ++i)
+		for(int j = 0; j < N; ++j)
+			if(h_ref.vec[i].coeffs[j] != h_jazz[i * N + j])
+				throw runtime_error("test failed at " + to_string(__LINE__));
+}
 
 int main() {
 	test_pack_t1();
@@ -252,5 +302,7 @@ int main() {
 	test_unpack_t0();
 	test_pack_z();
 	test_pack_signature();
+	for(int i = 0; i < 50; ++i)
+		test_unpack_signature(i);
 	return 0;
 }

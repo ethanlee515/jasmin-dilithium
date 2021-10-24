@@ -177,3 +177,61 @@ fn pack_signature_jazz(reg u64 p_ctilde, reg u64 pz, reg u64 ph, reg u64 psign) 
 		(u8)[psign + i] = c;
 	}
 }
+
+/*
+fn unpack_sig(reg ptr u8[Li2_SIGN_LEN] sig)
+	-> stack u8[32],
+	stack u32[Li2_l * Li2_polydeg],
+	stack u32[Li2_k * Li2_polydeg],
+	reg u32
+	*/
+
+export
+fn unpack_signature_jazz(reg u64 ptr_sig,
+	reg u64 ptr_c_tilde,
+	reg u64 ptr_z,
+	reg u64 ptr_h)
+-> reg u32
+{
+	stack u8[Li2_SIGN_LEN] sig;
+	stack u8[32] c_tilde;
+	stack u32[Li2_l * Li2_polydeg] z;
+	stack u32[Li2_k * Li2_polydeg] h;
+	reg u32 result;
+
+	reg u64 i;
+	reg u8 c;
+	reg u32 v;
+
+	i = 0;
+	while(i < Li2_SIGN_LEN) {
+		c = (u8)[ptr_sig + i];
+		sig[(int) i] = c;
+		i += 1;
+	}
+
+	c_tilde, z, h, result = unpack_sig(sig);
+
+	i = 0;
+	while(i < 32) {
+		c = c_tilde[(int) i];
+		(u8)[ptr_c_tilde + i] = c;
+		i += 1;
+	}
+
+	i = 0;
+	while(i < Li2_l * Li2_polydeg) {
+		v = z[(int) i];
+		(u32)[ptr_z + 4 * i] = v;
+		i += 1;
+	}
+
+	i = 0;
+	while(i < Li2_k * Li2_polydeg) {
+		v = h[(int) i];
+		(u32)[ptr_h + 4 * i] = v;
+		i += 1;
+	}
+
+	return result;
+}
