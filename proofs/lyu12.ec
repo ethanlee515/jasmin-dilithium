@@ -24,5 +24,3 @@ op discrete_normal(m : int, v : vector, sigma : real) : vector distr.
 axiom discrete_normal_1E :
     forall m v sigma x, Distr.mu1 (discrete_normal m v sigma) x = discrete_normal_pdf m v sigma x.
 
-
-
