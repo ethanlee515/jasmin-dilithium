@@ -35,7 +35,7 @@ op pi : real.
 
 op continuous_normal_pdf(v : varMatrix, x : varMatrix) : real =
     (Real.RField.exp (inv (sqrt (2%r * pi * sigma * sigma))) m)
-        * RealExp.exp (- (centered_asint (dotp (x + (-v)) (x + (-v))))%r / (2%r * sigma * sigma)).
+        * RealExp.exp (- (centered_asint (dotp (x - v) (x - v)))%r / (2%r * sigma * sigma)).
 
 (* There seems to be no way of computing this *)
 op discrete_normal_scaling : real.
