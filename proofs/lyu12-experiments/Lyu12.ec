@@ -1,140 +1,109 @@
-require AllCore RealExp Matrix Real Distr Int List.
-require import DInterval.
-
-import Real.RField.
-import Real.
-import RealExp.
-import List.
-import Int.
-
-require import ZModP.
-
-op pi : real.
-op m : int.
-
-op q : int.
+require AllCore RealExp Matrix Real Distr Int List. require import DInterval.
 
 require import IntDiv.
+require import Int.
+require import Distr.
 
-print Subtype.
+require ZModP.
 
-(* Attempt 2 *)
-clone import Subtype as Mod11 with
-    type T <= int,
-    type sT <= int, (* Required for insub to be well-defined *)
-    pred P <= fun x => 0 <= x < 11,
-    op insub <= fun x => if 0 <= x < 11 then Some x else None
-proof *.
-    realize insubN by smt().
-    (* valP: forall (x : int), 0 <= x && x < 11 *)
-    (* Clearly not even true *)
+op m : int.
+op d : int.
+op k : int.
+op n : int.
+op kappa : int.
+op sigma : real.
+op rej_sample_M : real.
+op q : int.
+axiom prime_q: prime q.
+clone ZModP.ZModRing as ZModQ with op p = q.
 
-(* Attempt 1 *)
-clone import Subtype as Mod11 with
-    type T <= int,
-    pred P <= fun x => 0 <= x < 11
-proof *.
-    realize insubN.
-    print insub.
-    (* insub not defined, not enough information to prove this *)
+op centered_asint(x : ZModQ.zmod) : int =
+    let ix = ZModQ.asint x in
+    if q %/ 2 < ix then ix - q else ix.
 
-    
-    type sT <= int,
+require VarMatrix.
+clone import VarMatrix as MatModQ with type ZR.t = ZModQ.zmod.
 
-axiom eleven_is_prime:
-    IntDiv.prime 11.
+(* -- Discrete Gaussians -- *)
 
-clone import ZModField as IntMod11 with
-    op p <= 11
-proof *.
-    realize prime_p by apply eleven_is_prime.
-    realize Sub.insubN.
-        move => x x_bound.
-        print insub.
-        print zmod.
+import Real.RField.
+import RealExp.
 
-    
+require import Real.
 
+op pi : real.
 
-axiom q_is_prime:
-    IntDiv.prime q.
-
-
-clone import ZModField as IntModQ with
-    op p <= q
-proof *.
-    realize prime_p.
-        apply q_is_prime.
-    qed.
-    realize Sub.insubN.
-        move => x x_bound.
-        print insub.
-
-
-
-
-    
-    
-
-
-
-
-op continuous_normal_pdf(m : int, v : vector, sigma : real, x : vector) : real =
+op continuous_normal_pdf(v : varMatrix, x : varMatrix) : real =
     (Real.RField.exp (inv (sqrt (2%r * pi * sigma * sigma))) m)
-        * RealExp.exp (- norm (x - v) ^ 2 / (2%r * sigma * sigma)).
+        * RealExp.exp (- (centered_asint (dotp (x + (-v)) (x + (-v))))%r / (2%r * sigma * sigma)).
 
 (* There seems to be no way of computing this *)
-op discrete_normal_scaling(m : int, sigma : real) : real.
+op discrete_normal_scaling : real.
 
-op discrete_normal_pdf(m : int, v : vector, sigma : real, x : vector) : real =
-    (continuous_normal_pdf m v sigma x) / (discrete_normal_scaling m sigma).
+op discrete_normal_pdf(v : varMatrix, x : varMatrix) : real =
+    (continuous_normal_pdf v x) / discrete_normal_scaling.
     
-op discrete_normal(m : int, v : vector, sigma : real) : vector distr.
+op discrete_normal(v : varMatrix) : varMatrix distr.
 
 axiom discrete_normal_1E :
-    forall m v sigma x, Distr.mu1 (discrete_normal m v sigma) x = discrete_normal_pdf m v sigma x.
+    forall v x, Distr.mu1 (discrete_normal v) x = discrete_normal_pdf v x.
 
-import Int.
+(* -- Other misc. building blocks -- *)
 
-pred intIsUnit(x : int) = (x = 1) || (x = -1).
-op intInvr(x : int) = x.
+op sk_entry_dist : int distr.
+axiom sk_entry_supp: forall x, -d <= x <= d <=> support sk_entry_dist x.
+axiom sk_entry_unif: is_uniform sk_entry_dist.
+axiom sk_entry_ll: is_lossless sk_entry_dist.
+op sk_dist : varMatrix distr = dVarMatrix m k (dmap sk_entry_dist ZModQ.inzmod).
 
-clone import Matrix as Matrix_ with
-    type ZR.t <= int,
-    op ZR.zeror <= 0,
-    op ZR.oner <= 1,
-    op ZR.(+) <= Int.(+),
-    op ZR.([-]) <= Int.([-]),
-    op ZR.( * ) <= Int.( * ),
-    op ZR.invr <= intInvr,
-    pred ZR.unit <= intIsUnit
-proof ZR.*.
-    realize ZR.addrA by smt().
-    realize ZR.addrC by smt().
-    realize ZR.add0r by smt().
-    realize ZR.addNr by smt().
-    realize ZR.oner_neq0 by smt().
-    realize ZR.mulrA by smt().
-    realize ZR.mulrC by smt().
-    realize ZR.mul1r by smt().
-    realize ZR.mulrDl by smt().
-    realize ZR.mulVr by smt().
-    realize ZR.unitP by smt().
-    realize ZR.unitout by smt().
-    realize ZR.mulf_eq0 by smt().
-    
-clone import Matrix as Matrix_modQ with
-    type ZR.t <= 
+op a_entry_dist : ZModQ.zmod distr.
+axiom a_entry_funif: is_funiform a_entry_dist.
+axiom a_entry_ll: is_lossless a_entry_dist.
+op a_dist : varMatrix distr = dVarMatrix n m a_entry_dist.
 
+op c_dist : varMatrix distr.
+axiom c_shape: forall c, support c_dist c <=> getDims c = (k, 1).
+axiom c_norm: forall c, support c_dist c <=> ZModQ.asint (dotp c c) <= kappa.
+axiom c_elem: forall c, support c_dist c <=> (forall ij, -1 <= centered_asint c.[ij] <= 1).
+axiom c_dist_unif: is_uniform c_dist.
+axiom c_dist_ll: is_lossless c_dist.
 
+type message.
 
-print matrix.
-print Matrix.matrix.
+op zero_vec = MatModQ.buildVarMat m 1 (ZModQ.inzmod 0).
+
+op isdone_dist(sc : varMatrix, z : varMatrix) : bool distr.
+
+(* Is there a library function for this? *)
+op min_real (a b : real) : real = if a < b then a else b.
+
+axiom isdone_dist_1E :
+    forall z sc, Distr.mu1 (isdone_dist sc z) true =
+        min_real 1%r ((discrete_normal_pdf zero_vec z)  / (rej_sample_M * (discrete_normal_pdf sc z) )).
+
+(* -- Building Lyu12 -- *)
 
 module Lyu12 = {
-    proc keygen() : int = {
-        
-
+    proc keygen() : varMatrix * varMatrix * varMatrix = {
+        var a, s, t;
+        a <$ a_dist;
+        s <$ sk_dist;
+        t <- a * s;
+        return (a, s, t);
     }
+    
+    proc sign(msg : message, a : varMatrix, s : varMatrix) : varMatrix * varMatrix = {
+        var y, c, z;
+        var is_done;
+        is_done <- false;
 
+        while(! is_done) {
+            y <$ discrete_normal zero_vec;
+            c <$ c_dist;
+            z <- s * c + y;
+            is_done <$ isdone_dist (s * c) z;
+        }
+
+        return (z, c);
+    }
 }.
