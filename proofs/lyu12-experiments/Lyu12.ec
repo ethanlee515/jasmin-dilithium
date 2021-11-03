@@ -84,6 +84,8 @@ axiom isdone_dist_1E :
 (* -- Building Lyu12 -- *)
 
 module Lyu12 = {
+    var counter : int
+
     proc keygen() : varMatrix * varMatrix * varMatrix = {
         var a, s, t;
         a <$ a_dist;
@@ -98,6 +100,7 @@ module Lyu12 = {
         is_done <- false;
 
         while(! is_done) {
+            counter <- counter + 1;
             y <$ discrete_normal zero_vec;
             c <$ c_dist;
             z <- s * c + y;
