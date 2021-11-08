@@ -1,6 +1,8 @@
-require import AllCore Distr Int List DInterval IntDiv.
+require import AllCore Distr Int List DInterval IntDiv SDist.
 
 require VarMatrix.
+
+
 
 clone import VarMatrix as IntMat with type ZR.t = int.
 
@@ -16,6 +18,28 @@ axiom g_shape: forall v z, z \in g v <=> getDims z = (m, 1).
 require DBool.
 
 clone import DBool.Biased.
+
+op t = fun good => dunit (if good then Some 0 else None).
+
+print sdist.
+
+op dA = dlet h (fun v =>
+    dlet (g v) (fun z =>
+        dlet
+            (dbiased ((mu1 f z) / M / (mu1 (g v) z)))
+            (fun good => dunit (if good then Some (z, v) else None))
+    )
+).
+
+module A' = {
+  proc main() : (varMatrix * V) option = {
+     var result; 
+     result <$ dA;
+     return result;
+  }
+}.
+
+(*
 
 module A = {
     proc main() : (varMatrix * V) option = {
@@ -57,3 +81,5 @@ lemma lemma4_7: forall eps &m,
     (* And probability of A outputs something is at least (1-eps) / M *)
       /\ Pr[A.main() @ &m : res = None] < eps / M).
     
+
+  *)
