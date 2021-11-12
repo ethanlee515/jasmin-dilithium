@@ -8,7 +8,7 @@ clone import VarMatrix as IntMat with type ZR.t = int.
 
 lemma mult_cancel_left (x y1 y2 : real):
     (* Really? *)
-    y1 = y2 => CoreReal.mul x y1 = CoreReal.mul x y2.
+    y1 = y2 => x * y1 = x * y2.
 proof.
     auto.
 qed.
@@ -30,6 +30,32 @@ proof.
     smt().
 qed.
 
+lemma ineq_div L R : R > 0%r => L <= R => L / R <= 1%r.
+    smt().
+qed.
+
+lemma prod_geq0 A B : A > 0%r => B > 0%r => A * B > 0%r.
+    smt().
+qed.
+
+lemma div_geq0 A B : A >= 0%r => B > 0%r => A / B >= 0%r.
+    smt().
+qed.
+
+lemma algebraic_fact (A B C D : real) : B > 0%r => D > 0%r => A * B * C / (D * B) = A * C / D.
+    smt().
+qed.
+
+lemma mult_comm (A B : real) : A * B = B * A.
+    smt().
+qed.
+
+lemma sum_of_zeros (A B) : A = 0 => B = 0 => A + B = 0.
+    move => a_def b_def.
+    rewrite a_def b_def.
+    auto.
+qed.
+
 (* -- End basic facts -- *)
 
 type V.
@@ -40,6 +66,7 @@ op f : varMatrix distr.
 axiom f_ll: is_lossless f.
 axiom f_shape: forall z, z \in f <=> getDims z = (m, 1).
 op M : real.
+axiom M_positive : M > 0%r.
 op g (v : V) : varMatrix distr.
 axiom g_ll: forall v, is_lossless (g v).
 axiom g_shape: forall v z, z \in g v <=> getDims z = (m, 1).
@@ -109,47 +136,147 @@ proof.
     auto.
 qed.
 
-
 op bad_event z v = mu1 f z > M * (mu1 (g v) z).
 
 lemma dA_output_good v z:
     !(bad_event z v) =>
-    mu1 dA (Some (z, v)) = mu1 f z / M.
+    v \in h =>
+    z \in g v =>
+    mu1 dA (Some (z, v)) = (mu1 f z / M) * (mu1 h v).
 proof.
-    move => not_bad.
-    rewrite /dA.
-    rewrite dlet1E.
+    move => not_bad v_in_h z_in_gv.
+    rewrite /bad_event in not_bad.
+    rewrite dA_simpl.
+    rewrite dunit1E.
     simplify.
 
-    print dlet1E.
-    
-    have dlet1E_again : 
-        mu1 (dlet (g a)
-            (fun (z0 : varMatrix) =>
-                dlet (dbiased (mu1 f z0 / (M * mu1 (g a) z0)))
-                (fun (good : bool) => dunit (if good then Some (z0, a) else None))))
-            (Some (z, v)))
-        =
-        sum (fun z => mu1
-    
-    .
-    auto.
+    rewrite (sumD1 _ v).
+        apply (summable_fin _ [v]).
+        simplify.
+        move => x.
+        rewrite (sumD1 _ z).
+            apply (summable_fin _ [z]).
+            move => x0.
+            simplify.
+            rewrite dunit1E.
+            smt().
 
+        simplify.
+        case (x = v).
+        trivial.
+        move => x_ne_v.
+        simplify.
+        rewrite dunit1E.
+        simplify.
+        have first_term_zero: b2r (x = v) = 0%r.
+            smt().
+        rewrite first_term_zero => /=.
+        apply sum0_eq.
+        simplify.
+        move => x0.
+        rewrite dunit1E.
+        case (x0 = z).
+        trivial.
+        simplify.
+        move => x0_ne_z.
+        smt().
     
+    simplify.   
+    rewrite (sumD1 _ z).
+        apply (summable_fin _ [z]).
+        move => /= x.
+        case (x <> z).
+        move => x_ne_z.
+        rewrite dunit1E.
+        smt().
+        smt().
+    simplify.
+    rewrite dunit1E.
+    simplify.
+
+    rewrite dbiased1E => /=.
     
+    have clamped_upper: mu1 f z / (M * mu1 (g v) z) <= 1%r.
+        apply ineq_div.
+        apply prod_geq0.
+        apply M_positive.
+        smt().
+        smt().
 
-    smt().
+    have clamped_lower: mu1 f z / (M * mu1 (g v) z) >= 0%r.
+        apply div_geq0.
+        case (z \in f).
+            smt().
+            move => no_sup.
+            have not_supp : mu1 f z = 0%r.
+                apply supportPn.
+                apply no_sup.
+            rewrite not_supp.
+            auto.
+
+        apply prod_geq0.
+        apply M_positive.
+        apply z_in_gv.
+
+    have clamped: clamp (mu1 f z / (M * mu1 (g v) z)) = mu1 f z / (M * mu1 (g v) z).
+        smt().
+    rewrite clamped.
+
+    simplify.
+
+    have gvz_cancelable : mu1 (g v) z > 0%r.
+        smt().
+
+    have cancel: mu1 h v * mu1 (g v) z * mu1 f z / (M * mu1 (g v) z) = mu1 h v * mu1 f z / M.
+        (* I see that there's an "algebra" tactic but I don't know how to use it *)
+        (* It turns my goal into "false" and create contradicting hypothesis *)
+        (* I'm not sure how to go from there *)
+        (* So I have an "algebraic_fact" lemma but I don't like it *)
+        apply algebraic_fact.
+        apply z_in_gv.
+        apply M_positive.
+
+    rewrite cancel.
+
+    clear cancel.
+    clear gvz_cancelable.
+    clear clamped clamped_upper clamped_lower.
+
+    have divide_and_conquer : forall (A B C D : real), A = D => B = 0%r => C = 0%r => A + B + C = D.
+        auto.
+
+    apply divide_and_conquer.
+        smt().
+
+        apply sum0_eq => /=.
+        move => x.
+        rewrite dunit1E.
+        case (x <> z).
+            smt().
+            smt().
+
+        apply sum0_eq => /=.
+        move => x.
+        case (x = v).
+            smt().
+            
+            simplify.
+            move => x_ne_v.
+            apply sum0_eq => /=.
+            move => x0.
+            rewrite dunit1E.
+            smt().
+qed.
 
 
-    
-
-lemma dA_inner_none_upperbound_bad:
-    forall eps v z,
-        mu f (fun z => bad_event z v) < eps =>
-        bad_event z v =>
-        mu1 dA None
-    
-op bad_event_eps eps = forall v, mu f (fun z => bad_event z v) < eps.
+lemma dA_output_bad v z:
+    bad_event z v =>
+    v \in h =>
+    z \in g v =>
+    mu1 dA (Some (z, v)) = (mu1 (g v) z) * (mu1 h v).
+proof.
+    (* ------------------  TODO   ------------------ *)
+    (* Hopefully not too different from the one above *)
 
 lemma a_none_upperbound:
     forall eps, bad_event_eps eps => mu1 dA None < eps / M.
