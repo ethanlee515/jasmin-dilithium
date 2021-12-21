@@ -56,6 +56,37 @@ lemma sum_of_zeros (A B) : A = 0 => B = 0 => A + B = 0.
     auto.
 qed.
 
+(* sum lemma, proven with the help of Christian Doczkal *)
+lemma sumD1_None (f : 'a option -> real) :
+    summable f =>
+    sum f = sum (fun y => f (Some y)) + f None.
+proof.
+  move => sum_f.
+  rewrite (sumD1 f None).
+  apply sum_f.
+  rewrite (sum_partition Some (fun y => f (Some y))).
+  exact (summable_inj Some).
+  have remove_none : forall x y, (x = y => f None + x = y + f None).
+  smt().
+  apply remove_none.
+  apply eq_sum.
+  simplify.
+  move => x.
+  case (x = None).
+  * move => x_eq_none.
+    simplify.
+    rewrite x_eq_none.
+    simplify.
+    rewrite sum0.
+    auto.
+  * move => x_not_none.
+    simplify.
+    rewrite (sumE_fin _ [oget x]).
+    smt().
+    smt().
+    smt().
+qed.
+
 (* -- End basic facts -- *)
 
 type V.
@@ -137,8 +168,9 @@ proof.
 qed.
 
 op bad_event z v = mu1 f z > M * (mu1 (g v) z).
+op bad_event_unlikely eps = forall v, mu f (fun z => bad_event z v) < eps.
 
-lemma dA_output_good v z:
+lemma dA_output_good_supp v z:
     !(bad_event z v) =>
     v \in h =>
     z \in g v =>
@@ -268,8 +300,77 @@ proof.
             smt().
 qed.
 
+lemma dA_output_good :
+  forall (v : V) (z : varMatrix),
+    ! bad_event z v =>
+    mu1 dA (Some (z, v)) = mu1 f z / M * mu1 h v.
+proof.
+  move => v z.
+  case (v \in h).
+  * move => v_in_h.
+    case (z \in g v).
+    * move => z_in_gv.
+      move => bad_ev.
+      apply dA_output_good_supp.
+      assumption.
+      assumption.
+      assumption.
+    * move => z_no_supp bad_ev.
+      rewrite supportPn in z_no_supp.
+      rewrite /bad_event in bad_ev.
+      have z_notin_f : mu1 f z = 0%r.
+        rewrite z_no_supp in bad_ev.
+        simplify bad_ev.
+        have bad_ev' : mu1 f z <= 0%r.
+          smt().
+        have mu1_non_neg : mu1 f z >= 0%r.
+          rewrite - massE.
+          apply ge0_mass.
+          smt().
+      rewrite z_notin_f.
+      simplify.
+      rewrite dA_simpl.
+      apply sum0_eq.
+      simplify.
+      move => v_.
+      apply sum0_eq.
+      move => z_.
+      rewrite dunit1E.
+      simplify.
+      rewrite dunit1E.
+      case (z_ = z).
+      * case (v_ = v).
+        * move => v_eq z_eq.
+          rewrite v_eq.
+          rewrite z_eq.
+          simplify.
+          rewrite z_no_supp.
+          auto.
+        * smt().
+      * smt().
+  * move => v_no_supp.
+    move => bad_ev.
+    rewrite supportPn in v_no_supp.
+    rewrite v_no_supp.
+    simplify.
+    rewrite dA_simpl.
+    apply sum0_eq.
+    simplify.
+    move => v_.
+    apply sum0_eq.
+    move => z_.
+    rewrite dunit1E.
+    simplify.
+    rewrite dunit1E.
+    case (v_ = v).
+    * move => v_eq.
+      rewrite v_eq.
+      rewrite v_no_supp.
+      auto.
+    * smt().
+qed.
 
-lemma dA_output_bad v z:
+lemma dA_output_bad_supp v z:
     bad_event z v =>
     v \in h =>
     z \in g v =>
@@ -340,8 +441,7 @@ proof.
         smt().
     
     rewrite clamping.
-    simplify.
-        
+    simplify.        
     have add_cancel_left : forall T1 T2, T1 = 0%r => T2 = 0%r => mu1 h v * mu1 (g v) z + T1 + T2 = mu1 (g v) z * mu1 h v.
         smt().
         
@@ -369,66 +469,243 @@ proof.
         smt().
 qed.
 
+print dA_output_bad_supp.
 
-    
-       have gvz_cancelable : mu1 (g v) z > 0%r.
-        smt().
-
-    have cancel: mu1 h v * mu1 (g v) z * mu1 f z / (M * mu1 (g v) z) = mu1 h v * mu1 f z / M.
-        (* I see that there's an "algebra" tactic but I don't know how to use it *)
-        (* It turns my goal into "false" and create contradicting hypothesis *)
-        (* I'm not sure how to go from there *)
-        (* So I have an "algebraic_fact" lemma but I don't like it *)
-        apply algebraic_fact.
-        apply z_in_gv.
-        apply M_positive.
-
-    rewrite cancel.
-
-    clear cancel.
-    clear gvz_cancelable.
-    clear clamped clamped_upper clamped_lower.
-
-    have divide_and_conquer : forall (A B C D : real), A = D => B = 0%r => C = 0%r => A + B + C = D.
-        auto.
-
-lemma a_none_upperbound:
-    forall eps, bad_event_eps eps => mu1 dA None < eps / M.
+lemma dA_output_bad :
+  forall (v : V) (z : varMatrix),
+    bad_event z v =>
+    mu1 dA (Some (z, v)) = mu1 (g v) z * mu1 h v.
 proof.
-    move => eps bad.
-    rewrite /bad_event_eps in bad.
-    rewrite /dA.
-    rewrite dlet1E.
+  move => v z.
+  case (v \in h).
+  * move => v_in_h.
+    case (z \in g v).
+    * move => z_in_gv.
+      move => bad_ev.
+      apply dA_output_bad_supp.
+      assumption.
+      assumption.
+      assumption.
+    * move => z_no_supp bad_ev.
+      rewrite supportPn in z_no_supp.
+      rewrite z_no_supp.
+      simplify.
+      rewrite dA_simpl.
+      apply sum0_eq.
+      simplify.
+      move => v_.
+      apply sum0_eq.
+      move => z_.
+      rewrite dunit1E.
+      simplify.
+      rewrite dunit1E.
+      case (z_ = z).
+      * case (v_ = v).
+        * move => v_eq z_eq.
+          rewrite v_eq.
+          rewrite z_eq.
+          simplify.
+          rewrite z_no_supp.
+          auto.
+        * smt().
+      * smt().
+  * move => v_no_supp.
+    move => bad_ev.
+    rewrite supportPn in v_no_supp.
+    rewrite v_no_supp.
     simplify.
-    print dlet1E.
-    have     
+    rewrite dA_simpl.
+    apply sum0_eq.
+    simplify.
+    move => v_.
+    apply sum0_eq.
+    move => z_.
+    rewrite dunit1E.
+    simplify.
+    rewrite dunit1E.
+    case (v_ = v).
+    * move => v_eq.
+      rewrite v_eq.
+      rewrite v_no_supp.
+      auto.
+    * smt().
+qed.
 
-    rewrite dlet1E.
-
-
-
-    
+lemma dA_output_something :
+  forall eps, bad_event_unlikely eps =>
+    mu dA (fun x => x <> None) =
+      sum (fun v => (mu1 h v) * (
+        sum (fun z => if bad_event z v then
+          (mu1 (g v) z) else
+          (mu1 f z) / M))).
+proof.
+  move => eps bad_event_eps.
+  rewrite muE => //.
+  simplify.
+  rewrite sumD1_None.
+    simplify.
+    apply (summable_le (mu1 dA) _).
+    * apply summable_mu1.
+    * simplify.
+      move => x.
+      case (x = None).
+      * smt().
+      * simplify.
+        rewrite massE.
+        smt().
+  simplify.
+  have LHS_summable : summable (fun (y : varMatrix * V) => mass dA (Some y)).
+    have relabel_fn_comp :
+      (fun (y : varMatrix * V) => mass dA (Some y)) = (mass dA) \o Some.
+      smt().
+    rewrite relabel_fn_comp.
+    rewrite summable_inj.
+      smt().
+    have mass_to_mu : mass dA = mu1 dA.
+      apply fun_ext.
+      move => x.
+      apply massE.
+    rewrite mass_to_mu.
+    rewrite summable_mu1.
+  rewrite sum_pair.
+    apply LHS_summable.
+  rewrite sum_swap.
+    apply LHS_summable.
+  apply eq_sum.
+  move => v.
+  simplify.
+  rewrite - sumZ.
+  apply eq_sum.
+  move => z.
+  simplify.
+  rewrite massE.
+  case (bad_event z v).
+  * move => bad_ev.
+    rewrite dA_output_bad.
+    assumption.
     smt().
-    
+  * move => neg_bad_ev.
+    rewrite dA_output_good.
+    assumption.
+    smt().
+qed.
+
+lemma dA_output_something_summable_inner :
+  forall v,
+    summable (fun (z : varMatrix) =>
+      if bad_event z v then mu1 (g v) z else mu1 f z / M).
+proof.
+admitted.
+
+lemma dA_output_something_summable :
+  summable (fun (v : V) =>
+         mu1 h v *
+         sum
+           (fun (z : varMatrix) =>
+              if bad_event z v then mu1 (g v) z else mu1 f z / M)).
+proof.
+  admitted.
+
+lemma dA_output_something_lowerbound :
+    forall eps, bad_event_unlikely eps =>
+    mu dA (fun x => x <> None) >= (1%r - eps) / M.
+proof.
+  move => eps bad_event_eps.
+  print dA_output_something.
+  rewrite (dA_output_something eps).
+    assumption.
+  print ler_sum_pos.
+  have first_hop :
+    ((sum (fun (v : V) =>
+      mu1 h v *
+      sum (fun (z : varMatrix) =>
+        if bad_event z v then mu1 (g v) z else mu1 f z / M))) >=
+    (sum (fun (v : V) =>
+      mu1 h v *
+      sum (fun (z : varMatrix) =>
+        if bad_event z v then mu1 (g v) z else 0%r)))).
+    print ler_sum_pos.
+    apply ler_sum_pos.
+    simplify.
+    move => v.
+    split.
+    * have product_of_positives :
+        forall (a b : real), a >= 0%r => b >= 0%r => a * b >= 0%r.
+        smt().
+      apply product_of_positives.
+      search mass.
+      rewrite - massE.
+      apply ge0_mass.
+      search sum.
+      apply ge0_sum.
+      move => z.
+      simplify.
+      case (bad_event z v).
+      * move => bad_ev.
+        rewrite - massE.
+        apply ge0_mass.
+      * smt().
+    move => unused.
+    clear unused.
+    have left_cancel :
+      forall (a b c : real), a >= 0%r => b <= c => a * b <= a * c.
+      smt().
+    apply left_cancel.
+      rewrite - massE.
+      apply ge0_mass.
+    clear left_cancel.
+    apply ler_sum_pos.
+    move => z.
+    simplify.
+    case (bad_event z v).
+    * move => bad_ev.
+      split.
+      * rewrite - massE.
+        apply ge0_mass.
+      * smt().
+    * move => bad_ev.
+      split.
+      * auto.
+      * move => unused.
+        have div_cancel :
+          forall (a b : real), a > 0%r => b >= 0%r => b / a >= 0%r.
+          smt().
+        apply div_cancel.
+        * apply M_positive.
+        * rewrite - massE.
+          apply ge0_mass.
+    apply dA_output_something_summable_inner.
+    apply dA_output_something_summable.
+  have second_hop :
+    (sum (fun (v : V) =>
+      mu1 h v *
+      sum (fun (z : varMatrix) =>
+        if bad_event z v then mu1 (g v) z else 0%r)) >=
+    (1%r - eps) / M).
+    admit.
+  have le_trans :
+    forall (a b c : real), a <= b => b <= c => a <= c.
+  smt().
+  apply (le_trans _ (sum (fun (v : V) =>
+      mu1 h v *
+      sum (fun (z : varMatrix) =>
+        if bad_event z v then mu1 (g v) z else 0%r))) _).
+  assumption.
+  assumption.
+qed.
+
+lemma dA_output_something_upperbound :
+  forall eps, bad_event_unlikely eps =>
+  mu dA (fun x => x <> None) >= 1%r / M.
+proof.
+      admitted.
+
 op dF = dlet h (fun v =>
   dlet f (fun z =>
         dlet (dbiased (1%r / M))
             (fun good => dunit (if good then Some (z, v) else None))
   )
 ).
-
-print sum_split.
-print sdist.
-print sdist_tvd.
-print summable_mass.
-print le1_mu.
-print mu_split.
-print mu_disjoint.
-print pred0.
-print predI.
-print predU.
-        
-print drestrict.
     
 
 lemma l4_7: forall eps,
