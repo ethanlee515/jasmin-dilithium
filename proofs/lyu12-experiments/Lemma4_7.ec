@@ -953,9 +953,125 @@ qed.
 
 lemma dA_output_something_upperbound :
   forall eps, bad_event_unlikely eps =>
-  mu dA (fun x => x <> None) >= 1%r / M.
+  mu dA (fun x => x <> None) <= 1%r / M.
 proof.
-  admitted.
+  move => eps bad_eps.
+  print dA_output_something.
+  rewrite (dA_output_something eps).
+    assumption.
+  have first_hop :
+    sum (fun v => mu1 h v *
+      sum (fun z => if bad_event z v then mu1 (g v) z else mu1 f z / M)) <=
+    sum (fun v => mu1 h v *
+      sum (fun z => mu1 f z / M)).
+    * apply ler_sum.
+      * (* ler : le *)
+        move => v /=.
+        have inner_ler_sum :
+          sum (fun (z : varMatrix) => if bad_event z v then mu1 (g v) z else mu1 f z / M) <=
+            sum (fun (z : varMatrix) => mu1 f z / M).
+        * apply ler_sum.
+          * (* ler : le *)
+            move => z /=.
+            case (bad_event z v).
+            * rewrite /bad_event.
+              move => bad_ev.
+              have arith :
+                forall (a b c : real),
+                  a > 0%r => b >= 0%r => c >= 0%r => a * b < c => b <= c / a.
+                smt().
+              apply arith.
+              * apply M_positive.
+              * rewrite - massE. apply ge0_mass.
+              * rewrite - massE. apply ge0_mass.
+              * apply bad_ev.
+            * auto.
+          * (* ler_sum : summable *)
+            apply dA_output_something_summable_inner.
+          * (* ler_sum : summable *)
+            have factor_invM :
+              (fun (z : varMatrix) => mu1 f z / M) = (fun (z : varMatrix) => (inv M) * (mu1 f z)).
+            * apply fun_ext.
+              smt().
+            rewrite factor_invM. clear factor_invM.
+            apply summableZ.
+            apply summable_mu1.
+        have mu1_hv_ge0 : mu1 h v >= 0%r by rewrite - massE; apply ge0_mass.
+        smt().
+      * (* ler_sum : summable *)
+        apply dA_output_something_summable.
+      * (* ler_sum : summable *)
+        move.
+        print summable_le_pos.
+        have inner_sum_simpl :
+          (fun (v : V) => mu1 h v * sum (fun (z : varMatrix) => mu1 f z / M)) =
+          (fun (v : V) => (inv M) * (mu1 h v)).
+        * apply fun_ext.
+          move => v /=.
+          have sum_eval :
+            sum (fun (z : varMatrix) => mu1 f z / M) = 1%r / M.
+          * move. print f_ll.
+            print mu1_sum.
+            print weightE.
+            have sum_factor_Minv :
+              sum (fun (z : varMatrix) => mu1 f z / M) =
+              sum (fun (z : varMatrix) => (inv M) * (mass f z)).
+            * apply eq_sum.
+              move => z /=.
+              rewrite massE.
+              reflexivity.
+            rewrite sum_factor_Minv. clear sum_factor_Minv.
+            rewrite sumZ.
+            print weightE.
+            rewrite - weightE.
+            rewrite f_ll.
+            auto.
+          rewrite sum_eval.
+          auto.
+        rewrite inner_sum_simpl.
+        apply summableZ.
+        apply summable_mu1.
+  have second_hop :
+    sum (fun v => mu1 h v *
+      sum (fun z => mu1 f z / M)) = 1%r / M.
+  * clear first_hop.
+    have inner_eq :
+      sum (fun (v : V) => mu1 h v * sum (fun (z : varMatrix) => mu1 f z / M)) =
+      sum (fun (v : V) => (inv M) * (mu1 h v)).
+    * apply eq_sum.
+      move => v /=.
+      
+      have sum_factor_Minv :
+        sum (fun (z : varMatrix) => mu1 f z / M) =
+        sum (fun (z : varMatrix) => (inv M) * (mass f z)).
+      * apply eq_sum.
+      move => z /=.
+        rewrite massE.
+        reflexivity.
+      rewrite sum_factor_Minv. clear sum_factor_Minv.
+      
+      rewrite sumZ.
+      have using_ll :
+        sum (fun (x : varMatrix) => mass f x) = 1%r.
+      * rewrite - weightE.
+        rewrite f_ll.
+        auto.
+      rewrite using_ll.
+      auto.
+    rewrite inner_eq.
+    rewrite sumZ.
+    have under_binding :
+      sum (fun (x : V) => mu1 h x) = sum (fun (x : V) => mass h x).
+    * apply eq_sum => v /=.
+      rewrite massE.
+      reflexivity.
+    rewrite under_binding. clear under_binding.
+    rewrite - weightE.
+    rewrite h_ll.
+    auto.
+  rewrite - second_hop.
+  apply first_hop.
+qed.
 
 op dF = dlet h (fun v =>
   dlet f (fun z =>
