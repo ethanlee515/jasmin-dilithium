@@ -117,6 +117,23 @@ op dA = dlet h (fun v =>
     )
 ).
 
+lemma dA_ll :
+  is_lossless dA.
+proof.
+  rewrite /dA.
+  search dlet.
+  apply dlet_ll.
+  apply h_ll.
+  move => v v_supp /=.
+  apply dlet_ll.
+  apply g_ll.
+  move => z z_supp /=.
+  apply dlet_ll.
+  apply dbiased_ll.
+  move => good good_supp /=.
+  apply dunit_ll.
+qed.
+
 lemma dA_dlet1E out :
     mu1 dA out =
     sum (fun v =>
@@ -1073,13 +1090,159 @@ proof.
   apply first_hop.
 qed.
 
+(* lemma needs the probability of dA outputting _nothing_ *)
+
+lemma dA_output_nothing :
+  mu dA (fun x => x = None) = 1%r - mu dA (fun x => x <> None).
+proof.
+  have mu_not_inst :
+     mu dA (predC (fun x => x <> None)) = weight dA - mu dA (fun x => x <> None) by apply mu_not.
+  rewrite - dA_ll.
+  have predC_under_fn : (fun (x : (varMatrix * V) option) => x = None) = (predC (fun x => x <> None)).
+    apply fun_ext.
+    smt().
+  rewrite predC_under_fn.
+  apply mu_not_inst.
+qed.
+
+lemma dA_output_nothing_lower :
+  forall eps,
+  bad_event_unlikely eps =>
+    mu dA (fun x => x = None) >= 1%r - 1%r / M.
+proof.
+  move => eps bad_event_eps.
+  rewrite dA_output_nothing.
+  print dA_output_something_upperbound.
+  have dA_output_upper :
+    mu dA (fun (x : (varMatrix * V) option) => x <> None) <= 1%r / M.
+  * apply (dA_output_something_upperbound eps).
+    assumption.
+  smt().
+qed.
+
+lemma dA_output_nothing_upper :
+  forall eps,
+  bad_event_unlikely eps =>
+    mu dA (fun x => x = None) <= 1%r - (1%r - eps) / M.
+proof.
+  move => eps bad_event_eps.
+  rewrite dA_output_nothing.
+  print dA_output_something_lowerbound.
+  have dA_output_lower_inst :
+    (1%r - eps) / M <= mu dA (fun (x : (varMatrix * V) option) => x <> None).
+  * apply (dA_output_something_lowerbound eps).
+    assumption.
+  smt().
+qed.
+
+(* -- Now do the same analysis with dF -- *)
+
 op dF = dlet h (fun v =>
   dlet f (fun z =>
-        dlet (dbiased (1%r / M))
-            (fun good => dunit (if good then Some (z, v) else None))
+    dlet (dbiased (1%r / M))
+      (fun good => dunit (if good then Some (z, v) else None))
   )
 ).
-    
+
+axiom invM_clamped :
+  clamp (inv M) = inv M.
+
+lemma dF_some_1E :
+  forall z v, mu1 dF (Some (z, v)) = (mu1 h v) * (mu1 f z) / M.
+proof.
+  move => z v.
+  rewrite /dF.
+  print dlet1E.
+  rewrite dlet1E => /=.
+  print sumE_fin.
+  rewrite (sumE_fin _ [v]).
+  * auto.
+  * (* zero outside [v] *)
+    move => x /=.
+    admit.
+  rewrite /big.
+  print foldr.
+  simplify.
+  search foldr.
+  rewrite foldr_map => /=.
+  rewrite /predT => /=.
+  rewrite dlet1E => /=.
+  rewrite (sumE_fin _ [z]).
+  * auto.
+  * (* zero outside [z] *)
+    move => x /=.
+    admit.
+  rewrite /big => /=.
+  rewrite foldr_map => /=.
+  rewrite /predT => /=.
+  rewrite dlet1E => /=.
+  rewrite sum_over_bool => /=.
+  search dbiased.
+  rewrite dbiased1E.
+  rewrite dbiased1E.
+  simplify.
+  rewrite invM_clamped.
+  search dunit.
+  print dunit1E.
+  rewrite dunit1E.
+  rewrite dunit1E.
+  auto.
+qed.
+
+lemma dF_none_1E :
+  mu1 dF None = 1%r - 1%r / M.
+proof.
+  rewrite /dF.
+  rewrite dlet1E => /=.
+  have fun_simpl :
+    (fun v => mu1 h v *
+       mu1 (dlet f
+         (fun z => dlet (dbiased (inv M))
+            (fun good =>
+               dunit (if good then Some (z, v) else None)))) None) =
+    (fun v => (1%r - inv M) * (mu1 h v)).
+  * apply fun_ext.
+    move => v /=.
+    rewrite dlet1E => /=.
+    have fun_simpl2 :
+      (fun z => mu1 f z * mu1 (dlet (dbiased (inv M))
+         (fun good => dunit (if good then Some (z, v) else None))) None) =
+      (fun z => (1%r - inv M) * (mu1 f z)).
+    * apply fun_ext.
+      move => z /=.
+      rewrite dlet1E => /=.
+      rewrite sum_over_bool => /=.
+      rewrite dbiased1E.
+      rewrite dbiased1E.
+      rewrite dunit1E.
+      rewrite dunit1E.
+      rewrite invM_clamped.
+      smt().
+    rewrite fun_simpl2.
+    rewrite sumZ.
+    (* summing over all z gives 1 *)
+    have mu1_mass :
+     (fun (z : varMatrix) => mu1 f z) = mass f.
+    * apply fun_ext.
+      move => z.
+      rewrite massE.
+      auto.
+    rewrite mu1_mass.
+    print weightE.
+    rewrite - weightE.
+    rewrite f_ll.
+    smt().
+  rewrite fun_simpl.
+  rewrite sumZ.
+  (* summing over all v gives 1 *)
+  have mu1_mass :
+    (fun v => mu1 h v) = mass h.
+  * apply fun_ext. move => v. rewrite massE. auto.
+  rewrite mu1_mass.
+  rewrite - weightE.
+  rewrite h_ll.
+  auto.
+qed.
 
 lemma l4_7: forall eps,
     (forall v, mu f (fun z => bad_event z v) < eps) =>
