@@ -1144,6 +1144,22 @@ op dF = dlet h (fun v =>
   )
 ).
 
+lemma dF_ll :
+  is_lossless dF.
+proof.
+  rewrite /dF.
+  apply dlet_ll.
+  apply h_ll.
+  move => v v_supp /=.
+  apply dlet_ll.
+  apply f_ll.
+  move => z z_supp /=.
+  apply dlet_ll.
+  apply dbiased_ll.
+  move => good good_supp /=.
+  apply dunit_ll.
+qed.
+
 axiom invM_clamped :
   clamp (inv M) = inv M.
 
@@ -1157,7 +1173,7 @@ proof.
   print sumE_fin.
   rewrite (sumE_fin _ [v]).
   * auto.
-  * (* zero outside [v] *)
+  * (* TODO zero outside [v] *)
     move => x /=.
     admit.
   rewrite /big.
@@ -1169,7 +1185,7 @@ proof.
   rewrite dlet1E => /=.
   rewrite (sumE_fin _ [z]).
   * auto.
-  * (* zero outside [z] *)
+  * (* TODO zero outside [z] *)
     move => x /=.
     admit.
   rewrite /big => /=.
@@ -1244,19 +1260,150 @@ proof.
   auto.
 qed.
 
-lemma l4_7: forall eps,
-    (forall v, mu f (fun z => bad_event z v) < eps) =>
-    ((sdist dA dF < eps / M)
-      /\ (mu1 dA None < eps / M)).
+lemma lem4_7_firsthalf :
+  forall eps,
+    bad_event_unlikely eps =>
+    (sdist dA dF <= eps / M).
 proof.
-    move => eps mu_bad_event.
-    split.
+  move => eps mu_bad_event.
+  print sdist.
+  search sdist.
+  rewrite sdist_tvd.
+  rewrite dF_ll.
+  rewrite dA_ll.
+  simplify.
+  rewrite StdOrder.RealOrder.normr0 => /=.
+  rewrite sumD1_None.
+  * apply summable_sdist.
+  simplify.
+  have summable_sdist_tvd_some :
+    summable (fun (y : varMatrix * V) => `|mu1 dA (Some y) - mu1 dF (Some y)|).
+  * apply (summable_inj Some (fun sy => `|mu1 dA sy - mu1 dF sy|)).
+    auto.
+    apply summable_sdist.
+  have each_term_bound :
+    forall (a b : real), a <= eps / M => b <= eps / M => (a + b) / 2%r <= eps / M.
+    smt().
+  apply each_term_bound.
+  * clear each_term_bound.
+    rewrite sum_pair.
+    * apply summable_sdist_tvd_some.
+    rewrite sum_swap.
+    * assumption.
+    simplify.
+    have inner_sum_simpl :
+      (fun v => (sum (fun z => `|mu1 dA (Some (z, v)) - mu1 dF (Some (z, v))|))) =
+      fun v => (sum (fun z =>
+        if bad_event z v then `| mu1 h v * mu1 (g v) z - mu1 h v * mu1 f z / M | else 0%r)).
+    * apply fun_ext.
+      move => v /=.
+      apply eq_sum => z /=.
+      case (bad_event z v).
+      * move => bad_ev.
+        rewrite dA_output_bad.
+          assumption.
+        rewrite dF_some_1E.
+        smt().
+      * move => good_ev.
+        rewrite dA_output_good.
+          assumption.
+        rewrite dF_some_1E.
+        smt().
+    rewrite inner_sum_simpl.
+    clear inner_sum_simpl.
+    print ler_sum.
+    have leq_trans :
+      forall (a b c : real), a <= b => b <= c => a <= c.
+      smt().
+    apply (leq_trans _ (
+      sum (fun v =>
+        sum (fun z =>
+          if bad_event z v then mu1 h v * mu1 f z / M else 0%r))) _).
+    * apply ler_sum.
+      * move => v /=.
+        apply ler_sum.
+        * move => z /=.
+          admit.
+        * admit. (* ler_sum summable *)
+        * admit. (* ler_sum summable *)
+      * admit. (* ler_sum summable *)
+      * admit. (* ler_sum summable *)
+    print bad_event_unlikely.
+    have inner_sum_simpl :
+      (fun v => sum
+        (fun z => if bad_event z v then mu1 h v * mu1 f z / M else 0%r)) =
+      (fun v => (mu1 h v * inv M) * mu f (fun z => bad_event z v)).
+    * apply fun_ext.
+      move => v /=.
+      have under_binding_factor :
+        (fun z => if bad_event z v then mu1 h v * mu1 f z / M else 0%r) =
+        fun z => (mu1 h v * inv M) * if bad_event z v then mu1 f z else 0%r.
+      * apply fun_ext.
+        move => z /=.
+        case (bad_event z v).
+        * smt().
+        * smt().
+      rewrite under_binding_factor. clear under_binding_factor.
+      rewrite sumZ.
+      print muE.
+      have muE_inst :
+        sum (fun (x : varMatrix) => if bad_event x v then mu1 f x else 0%r) =
+        mu f (fun z => bad_event z v).
+      * rewrite muE.
+        simplify.
+        apply eq_sum => z /=.
+        rewrite massE.
+        auto.
+      rewrite muE_inst.
+      auto.
+    rewrite inner_sum_simpl. clear inner_sum_simpl.
+    print ler_sum.
+    clear summable_sdist_tvd_some.
+    apply (leq_trans _ (
+      sum (fun v => (eps * inv M) * mu1 h v)) _).
+    * (* hop1 *)
+      admit.
+    * (* hop2 *)
+      rewrite sumZ.
+      have mu1_mass :
+        (fun v => mu1 h v) = mass h.
+      * apply fun_ext.
+        move => v.
+        rewrite massE.
+        auto.
+      rewrite mu1_mass.
+      rewrite - weightE.
+      rewrite h_ll.
+      auto.
+  * rewrite dF_none_1E.
+    rewrite /"`|_|".
+    case (0%r <= mu1 dA None - (1%r - 1%r / M)).
+    * move => unused.
+      have dA_output_nothing_upper_inst :
+        mu1 dA None <= 1%r - (1%r - eps) / M by apply (dA_output_nothing_upper eps).
+      smt().
+    * move => unused.
+      have dA_output_nothing_lower_inst :
+        mu1 dA None >= (1%r - 1%r / M) by apply (dA_output_nothing_lower eps).
+      smt().
+qed.
 
-    
+lemma lem4_7 :
+  forall eps,
+    bad_event_unlikely eps =>
+    (sdist dA dF <= eps / M) &&
+    (mu dA (fun x => x <> None) >= (1%r - eps) / M).
+proof.
+  move => eps bad_event_eps.
+  split.
+  * apply lem4_7_firsthalf.
+    assumption.
+  * move => unused. clear unused.
+    apply dA_output_something_lowerbound.
+    assumption.
+qed.
 
-
-
-
+(*
 module A' = {
   proc main() : (varMatrix * V) option = {
      var result; 
@@ -1264,6 +1411,7 @@ module A' = {
      return result;
   }
 }.
+*)
 
 (*
 
@@ -1308,47 +1456,4 @@ lemma lemma4_7: forall eps &m,
       /\ Pr[A.main() @ &m : res = None] < eps / M).
     
 
-  *)
-
-(* I don't understand rewrite's syntax so here we go... *)
-(*
-lemma dA_inner_dlet1E v z out:
-    mu1
-        (dlet
-            (dbiased ((mu1 f z) / (M * (mu1 (g v) z))))
-            (fun good => dunit (if good then Some (z, v) else None)))
-        out
-    = sum (fun good =>
-        mu1 (dbiased ((mu1 f z) / M / (mu1 (g v) z))) good *
-        mu1 (dunit (if good then Some (z, v) else None)) out).
-proof.
-    rewrite dlet1E.
-    simplify.
-    auto.
-qed.
-
-lemma dA_dlet1E_again v out:
-    mu1
-        (dlet (g v) (fun z =>
-            dlet (dbiased ((mu1 f z) / M / (mu1 (g v) z)))
-                (fun good => dunit (if good then Some (z, v) else None))))
-        out
-    =
-    sum (fun z =>
-        mu1 (g v) z *
-        sum (fun good =>
-            mu1 (dbiased ((mu1 f z) / M / (mu1 (g v) z))) good *
-            mu1 (dunit (if good then Some (z, v) else None)) out
-        )
-    ).
-proof.
-    rewrite dlet1E.
-    simplify.
-    print dA_inner_dlet1E.
-    rewrite dA_inner_dlet1E.
-        
-
-        
-        
-    = mu1 (dbiased ((mu1 f z) / M / (mu1 (g v) z))) good
   *)
