@@ -16,7 +16,6 @@ qed.
 lemma sum_over_bool (f : bool -> real):
     sum (fun b => f b) = f true + f false.
 proof.
-    print sumE_fin.
     rewrite (sumE_fin _ [true; false]).
     smt().
     smt().
@@ -108,7 +107,6 @@ clone import DBool.Biased.
 
 op t = fun good => dunit (if good then Some 0 else None).
 
-print sdist.
 
 op dA = dlet h (fun v =>
     dlet (g v) (fun z =>
@@ -121,7 +119,6 @@ lemma dA_ll :
   is_lossless dA.
 proof.
   rewrite /dA.
-  search dlet.
   apply dlet_ll.
   apply h_ll.
   move => v v_supp /=.
@@ -459,8 +456,10 @@ proof.
     
     rewrite clamping.
     simplify.        
-    have add_cancel_left : forall T1 T2, T1 = 0%r => T2 = 0%r => mu1 h v * mu1 (g v) z + T1 + T2 = mu1 (g v) z * mu1 h v.
-        smt().
+    have add_cancel_left :
+      forall T1 T2,
+        T1 = 0%r => T2 = 0%r => mu1 h v * mu1 (g v) z + T1 + T2 = mu1 (g v) z * mu1 h v.
+      smt().
         
     apply add_cancel_left.
         
@@ -485,8 +484,6 @@ proof.
         rewrite dunit1E.
         smt().
 qed.
-
-print dA_output_bad_supp.
 
 lemma dA_output_bad :
   forall (v : V) (z : varMatrix),
@@ -613,8 +610,6 @@ lemma dA_output_something_summable_inner :
       if bad_event z v then mu1 (g v) z else mu1 f z / M).
 proof.
   move => v.
-  search summable.
-  print summable_le_pos.
   apply (summable_le_pos _ (fun z => mu1 (g v) z + mu1 f z / M)).
   * (* upper sequence is summable *)
     apply summableD.
@@ -739,10 +734,8 @@ lemma dA_output_something_lowerbound :
 proof.
   have m_pos : M > 0%r by apply M_positive.
   move => eps bad_event_eps.
-  print dA_output_something.
   rewrite (dA_output_something eps).
     assumption.
-  print ler_sum_pos.
   have first_hop :
     ((sum (fun (v : V) =>
       mu1 h v *
@@ -944,8 +937,6 @@ proof.
       clear under_binding.
       rewrite sumZ.
       have hll : sum (fun (x : V) => mu1 h x) = 1%r.
-        print h_ll.
-        print is_lossless.
         have w : sum (fun (x : V) => mu1 h x) = sum (mass h).
           apply eq_sum.
           move => v /=.
@@ -973,7 +964,6 @@ lemma dA_output_something_upperbound :
   mu dA (fun x => x <> None) <= 1%r / M.
 proof.
   move => eps bad_eps.
-  print dA_output_something.
   rewrite (dA_output_something eps).
     assumption.
   have first_hop :
@@ -1019,7 +1009,6 @@ proof.
         apply dA_output_something_summable.
       * (* ler_sum : summable *)
         move.
-        print summable_le_pos.
         have inner_sum_simpl :
           (fun (v : V) => mu1 h v * sum (fun (z : varMatrix) => mu1 f z / M)) =
           (fun (v : V) => (inv M) * (mu1 h v)).
@@ -1027,8 +1016,7 @@ proof.
           move => v /=.
           have sum_eval :
             sum (fun (z : varMatrix) => mu1 f z / M) = 1%r / M.
-          * move. print f_ll.
-            have sum_factor_Minv :
+          * have sum_factor_Minv :
               sum (fun (z : varMatrix) => mu1 f z / M) =
               sum (fun (z : varMatrix) => (inv M) * (mass f z)).
             * apply eq_sum.
@@ -1037,7 +1025,6 @@ proof.
               reflexivity.
             rewrite sum_factor_Minv. clear sum_factor_Minv.
             rewrite sumZ.
-            print weightE.
             rewrite - weightE.
             rewrite f_ll.
             auto.
@@ -1108,7 +1095,6 @@ lemma dA_output_nothing_lower :
 proof.
   move => eps bad_event_eps.
   rewrite dA_output_nothing.
-  print dA_output_something_upperbound.
   have dA_output_upper :
     mu dA (fun (x : (varMatrix * V) option) => x <> None) <= 1%r / M.
   * apply (dA_output_something_upperbound eps).
@@ -1123,7 +1109,6 @@ lemma dA_output_nothing_upper :
 proof.
   move => eps bad_event_eps.
   rewrite dA_output_nothing.
-  print dA_output_something_lowerbound.
   have dA_output_lower_inst :
     (1%r - eps) / M <= mu dA (fun (x : (varMatrix * V) option) => x <> None).
   * apply (dA_output_something_lowerbound eps).
@@ -1170,9 +1155,7 @@ lemma dF_some_1E :
 proof.
   move => z v.
   rewrite /dF.
-  print dlet1E.
   rewrite dlet1E => /=.
-  print sumE_fin.
   rewrite (sumE_fin _ [v]).
   * auto.
   * (* zero outside [v] *)
@@ -1188,7 +1171,6 @@ proof.
     apply left_cancel.
     rewrite dlet1E => /=.
     rewrite sum_over_bool => /=.
-    print dunit1E.
     rewrite dunit1E.
     rewrite dunit1E.
     smt().
@@ -1264,7 +1246,6 @@ proof.
       rewrite massE.
       auto.
     rewrite mu1_mass.
-    print weightE.
     rewrite - weightE.
     rewrite f_ll.
     smt().
@@ -1286,8 +1267,6 @@ lemma lem4_7_firsthalf :
     (sdist dA dF <= eps / M).
 proof.
   move => eps mu_bad_event.
-  print sdist.
-  search sdist.
   rewrite sdist_tvd.
   rewrite dF_ll.
   rewrite dA_ll.
@@ -1331,7 +1310,6 @@ proof.
         smt().
     rewrite inner_sum_simpl.
     clear inner_sum_simpl.
-    print ler_sum.
     have leq_trans :
       forall (a b c : real), a <= b => b <= c => a <= c.
       smt().
@@ -1402,7 +1380,6 @@ proof.
               apply sum_of_geq0; rewrite - massE; apply ge0_mass.
         * (* ler_sum summable *)
           apply (summable_le_pos _ (fun z => (mu1 h v / M) * mu1 f z)).
-          print summable_le_pos.
           * (* upper summable *)
             apply summableZ.
             apply summable_mu1.
@@ -1443,11 +1420,9 @@ proof.
           * (* upper bounded *)
             move => unused; clear unused.
             (* this will be kinda unfun. *)
-            print ler_sum.
             apply (leq_trans  _ (sum (fun z => mu1 h v * `|mu1 (g v) z - mu1 f z / M|)) _).
             * (* first hop *)
               apply ler_sum.
-              print ler_sum.
               * (* le *)
                 move => z /=.
                 case (bad_event z v).
@@ -1480,7 +1455,6 @@ proof.
                     have m_geq1_inst : M >= 1%r by apply m_geq1. *)
                     case (bad_event z v).
                     * clear unused; move => unused; clear unused.
-                      (* search "`|_|". *)
                       have group_terms : forall (a b c d : real), d >= 1%r =>
                         a * b - a * c / d = a * (b - c / d) by smt().
                       rewrite group_terms.
@@ -1497,7 +1471,8 @@ proof.
                         rewrite - massE; apply ge0_mass.
                         move => unused. rewrite - massE; apply le1_mass.
                         smt().
-                        have gvz_ge0 : mu1 (g v) z >= 0%r by rewrite - massE; apply ge0_mass.                                 have fz_ge0 : mu1 f z >= 0%r by rewrite - massE; apply ge0_mass.
+                        have gvz_ge0 : mu1 (g v) z >= 0%r by rewrite - massE; apply ge0_mass.
+                        have fz_ge0 : mu1 f z >= 0%r by rewrite - massE; apply ge0_mass.
                         have m_ge1_inst : M >= 1%r by apply m_geq1.
                         smt(). 
                       apply (leq_trans _ (`|mu1 (g v) z| + `|mu1 f z / M|)).
@@ -1523,12 +1498,10 @@ proof.
                 * apply summableD.
                   * apply summable_mu1.
                   * apply/summableZ/summable_mu1.
-                print summable_le_pos.
                 * move => z /=.
                   split.
                   * smt().
                   * move => unused. clear unused.
-                    print StdOrder.RealOrder.ler_norm_sub.
                     apply (leq_trans _ (`|mu1 (g v) z| + `|mu1 f z / M|)).
                     apply StdOrder.RealOrder.ler_norm_sub.
                     rewrite StdOrder.RealOrder.ger0_norm.
@@ -1561,7 +1534,6 @@ proof.
                     have m_ge0_inst : M >= 1%r by apply m_geq1.
                     smt().
                   auto.
-                  print summable_le_pos.
                 * (* summable 1 *)
                   apply (summable_le_pos _ (fun z => `|mu1 (g v) z| + `|mu1 f z / M|)).
                   * (* summable_le_pos summable *)
@@ -1608,7 +1580,6 @@ proof.
                 (fun (x : varMatrix) => inv M * mu1 f x) by apply fun_ext; smt().
               rewrite factorM.
               clear factorM.
-              print weightE.
               have first_term_is_mass :
                 (fun (x : varMatrix) => mu1 (g v) x) = mass (g v).
               * apply fun_ext => z /=. rewrite massE. auto.
@@ -1627,13 +1598,11 @@ proof.
               smt().
       * (* ler_sum summable *)
         apply (summable_le_pos _ (fun v => sum (fun z => (mu1 h v / M) * mu1 f z))).
-        print summable_le_pos.
         * (* upper summable *)
           have under_binding :
             (fun (v : V) => sum (fun (z : varMatrix) => mu1 h v / M * mu1 f z)) =
             (fun (v : V) => sum (fun (z : varMatrix) => mu1 f z) * (mu1 h v / M)).
           * apply fun_ext => v /=.
-            print sumZ.
             have more_under_binding :
               (fun (z : varMatrix) => mu1 h v * mu1 f z / M) =
               (fun (z : varMatrix) => (mu1 h v / M) * mu1 f z) by apply fun_ext; smt().
@@ -1728,7 +1697,6 @@ proof.
         * smt().
       rewrite under_binding_factor. clear under_binding_factor.
       rewrite sumZ.
-      print muE.
       have muE_inst :
         sum (fun (x : varMatrix) => if bad_event x v then mu1 f x else 0%r) =
         mu f (fun z => bad_event z v).
@@ -1740,7 +1708,6 @@ proof.
       rewrite muE_inst.
       auto.
     rewrite inner_sum_simpl. clear inner_sum_simpl.
-    print ler_sum.
     clear summable_sdist_tvd_some.
     apply (leq_trans _ (
       sum (fun v => (eps * inv M) * mu1 h v)) _).
