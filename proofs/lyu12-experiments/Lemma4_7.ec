@@ -1028,8 +1028,6 @@ proof.
           have sum_eval :
             sum (fun (z : varMatrix) => mu1 f z / M) = 1%r / M.
           * move. print f_ll.
-            print mu1_sum.
-            print weightE.
             have sum_factor_Minv :
               sum (fun (z : varMatrix) => mu1 f z / M) =
               sum (fun (z : varMatrix) => (inv M) * (mass f z)).
@@ -1057,7 +1055,6 @@ proof.
       sum (fun (v : V) => (inv M) * (mu1 h v)).
     * apply eq_sum.
       move => v /=.
-      
       have sum_factor_Minv :
         sum (fun (z : varMatrix) => mu1 f z / M) =
         sum (fun (z : varMatrix) => (inv M) * (mass f z)).
@@ -1066,7 +1063,6 @@ proof.
         rewrite massE.
         reflexivity.
       rewrite sum_factor_Minv. clear sum_factor_Minv.
-      
       rewrite sumZ.
       have using_ll :
         sum (fun (x : varMatrix) => mass f x) = 1%r.
@@ -1160,8 +1156,14 @@ proof.
   apply dunit_ll.
 qed.
 
-axiom invM_clamped :
+axiom m_geq1 : M >= 1%r.
+
+lemma invM_clamped :
   clamp (inv M) = inv M.
+proof.
+  have m_geq1_inst : M >= 1%r by apply m_geq1.
+  smt().
+qed.
 
 lemma dF_some_1E :
   forall z v, mu1 dF (Some (z, v)) = (mu1 h v) * (mu1 f z) / M.
@@ -1173,33 +1175,51 @@ proof.
   print sumE_fin.
   rewrite (sumE_fin _ [v]).
   * auto.
-  * (* TODO zero outside [v] *)
+  * (* zero outside [v] *)
     move => x /=.
-    admit.
+    case (x = v).
+    auto.
+    move => xv_neq /=.
+    rewrite dlet1E => /=.
+    have left_cancel : forall a b, b = 0%r => a * b = 0%r by smt().
+    apply left_cancel.
+    apply sum0_eq.
+    move => z_ /=.
+    apply left_cancel.
+    rewrite dlet1E => /=.
+    rewrite sum_over_bool => /=.
+    print dunit1E.
+    rewrite dunit1E.
+    rewrite dunit1E.
+    smt().
   rewrite /big.
-  print foldr.
   simplify.
-  search foldr.
   rewrite foldr_map => /=.
   rewrite /predT => /=.
   rewrite dlet1E => /=.
   rewrite (sumE_fin _ [z]).
   * auto.
-  * (* TODO zero outside [z] *)
+  * (* zero outside [z] *)
     move => x /=.
-    admit.
+    case (x = z).
+    auto.
+    move => xz_neq /=.
+    have left_cancel : forall a b, b = 0%r => a * b = 0%r by smt().
+    apply left_cancel.
+    rewrite dlet1E => /=.
+    rewrite sum_over_bool => /=.
+    rewrite dunit1E.
+    rewrite dunit1E.
+    smt().
   rewrite /big => /=.
   rewrite foldr_map => /=.
   rewrite /predT => /=.
   rewrite dlet1E => /=.
   rewrite sum_over_bool => /=.
-  search dbiased.
   rewrite dbiased1E.
   rewrite dbiased1E.
   simplify.
   rewrite invM_clamped.
-  search dunit.
-  print dunit1E.
   rewrite dunit1E.
   rewrite dunit1E.
   auto.
@@ -1323,12 +1343,375 @@ proof.
       * move => v /=.
         apply ler_sum.
         * move => z /=.
-          admit.
-        * admit. (* ler_sum summable *)
-        * admit. (* ler_sum summable *)
-      * admit. (* ler_sum summable *)
-      * admit. (* ler_sum summable *)
-    print bad_event_unlikely.
+          case (bad_event z v).
+          * move => bad_ev.
+            rewrite /bad_event in bad_ev.
+            (* hints for smt to solve inequalities *)
+            (* I have no idea how to solve inequalities without smt *)
+            have mu_gv_ge0 : mu1 (g v) z >= 0%r by rewrite - massE; apply ge0_mass.
+            have mu_hv_ge0 : mu1 h v >= 0%r by rewrite - massE; apply ge0_mass.
+            have mu_fz_ge0 : mu1 f z >= 0%r by rewrite - massE; apply ge0_mass.
+            have m_geq1_inst : M >= 1%r by apply m_geq1.
+
+            have eqr_normN_inst : forall (x : real), x <= 0%r => `|x| = -x.
+              move => x eq_leq0.
+              apply StdOrder.RealOrder.eqr_normN.
+              assumption.
+            rewrite eqr_normN_inst.
+              smt().
+            smt().
+          * auto.
+        * (* ler_sum summable *)
+          apply (summable_le_pos _ (fun z => mu1 (g v) z + mu1 f z)).
+          * (* upper is summable *)
+            apply summableD; apply summable_mu1.
+          * (* upper is correct *)
+            move => z /=.
+            case (bad_event z v).
+            * move => bad_ev.
+              split.
+              * smt().
+              * move => unused.
+                apply (leq_trans _ (mu1 h v * mu1 (g v) z + mu1 h v * mu1 f z / M) _).
+                * (* triangle ineq? *)
+                  apply (leq_trans _ (`|mu1 h v * mu1 (g v) z| + `|mu1 h v * mu1 f z / M|) _ ).
+                  apply StdOrder.RealOrder.ler_norm_sub.
+                  have sum_of_norm_geq0 :
+                    forall (a b : real), a >= 0%r => b >= 0%r => `|a| + `|b| <= a + b by smt().
+                  apply sum_of_norm_geq0.
+                  have prod_of_geq0 : forall a b, a >= 0%r => b >= 0%r => a * b >= 0%r by smt().
+                  apply prod_of_geq0; rewrite - massE; apply ge0_mass.
+                  have prod_of_geq0_invM :
+                    forall a b m, a >= 0%r => b >= 0%r => m >= 1%r => a * b / m >= 0%r by smt().
+                  apply prod_of_geq0_invM.
+                    rewrite - massE; apply ge0_mass.
+                    rewrite - massE; apply ge0_mass.
+                    apply m_geq1.
+                * have ineq_fact :
+                    forall (f1 f2 t1 t2 : real),
+                      (f1 <= 1%r) => (f2 >= 1%r) => (t1 >= 0%r) => (t2 >= 0%r) =>
+                      (f1 * t1 + f1 * t2 / f2 <= t1 + t2) by smt().
+                  apply ineq_fact.
+                  rewrite - massE; apply le1_mass.
+                  apply m_geq1.
+                  rewrite - massE; apply ge0_mass.
+                  rewrite - massE; apply ge0_mass.
+            * move => neg_bad_ev.
+              split. auto. move => unused.
+              have sum_of_geq0 : forall (a b : real), a >= 0%r => b >= 0%r => a + b >= 0%r by smt().
+              apply sum_of_geq0; rewrite - massE; apply ge0_mass.
+        * (* ler_sum summable *)
+          apply (summable_le_pos _ (fun z => (mu1 h v / M) * mu1 f z)).
+          print summable_le_pos.
+          * (* upper summable *)
+            apply summableZ.
+            apply summable_mu1.
+          * (* upper correct *)
+            move => z /=.
+            case (bad_event z v) => unused.
+            * split.
+              * have ineq_fact :
+                  forall a b c,
+                    a >= 0%r => b >= 0%r => c >= 1%r => a * b / c >= 0%r by smt().
+                apply ineq_fact.
+                rewrite - massE; apply ge0_mass.
+                rewrite - massE; apply ge0_mass.
+                apply m_geq1.
+              * auto.
+            * split.
+              * auto.
+                move => unused2.
+                have ineq_fact :
+                  forall a b c,
+                    a >= 0%r => b >= 0%r => c >= 1%r => a * b / c >= 0%r by smt().
+                apply ineq_fact.
+                rewrite - massE; apply ge0_mass.
+                rewrite - massE; apply ge0_mass.
+                apply m_geq1.
+      * (* ler_sum summable *)
+        apply (summable_le_pos _ (fun v => 2%r * mu1 h v)).
+        * (* summable_le_pos - upper summable *)
+          apply summableZ.
+          apply summable_mu1.
+        * (* summable_le_pos - upper correct *)
+          move => v /=.
+          split.
+          * (* upper >= 0 *)
+            simplify.
+            apply ge0_sum => z /=.
+            smt().
+          * (* upper bounded *)
+            move => unused; clear unused.
+            (* this will be kinda unfun. *)
+            print ler_sum.
+            apply (leq_trans  _ (sum (fun z => mu1 h v * `|mu1 (g v) z - mu1 f z / M|)) _).
+            * (* first hop *)
+              apply ler_sum.
+              print ler_sum.
+              * (* le *)
+                move => z /=.
+                case (bad_event z v).
+                * move => unused.
+                  have group_terms : forall (a b c d : real), d >= 1%r =>
+                    a * b - a * c / d = a * (b - c / d) by smt().
+                  rewrite group_terms.
+                    apply m_geq1.
+                  have mu1_hv_ge0 : mu1 h v >= 0%r by rewrite - massE; apply ge0_mass.
+                  rewrite StdOrder.RealOrder.normrZ.
+                    rewrite - massE; apply ge0_mass.
+                  auto.
+                * move => unused.
+                  have prod_ge0 : forall a b, a >= 0%r => b >= 0%r => a * b >= 0%r by smt().
+                  apply prod_ge0.
+                  rewrite - massE; apply ge0_mass.
+                  smt().
+              * (* summable 1 *)
+                apply (summable_le_pos _ (fun z => mu1 (g v) z + inv M * mu1 f z)).
+                * apply summableD.
+                  * apply summable_mu1.
+                  * apply/summableZ/summable_mu1.
+                * move => z /=.
+                  split.
+                  * smt().
+                  * move => unused. (*
+                    have gvz_ge0 : mu1 (g v) z >= 0%r by rewrite - massE; apply ge0_mass.
+                    have hv_ge0 : mu1 h v >= 0%r by rewrite - massE; apply ge0_mass.
+                    have fz_ge0 : mu1 f z >= 0%r by rewrite - massE; apply ge0_mass.
+                    have m_geq1_inst : M >= 1%r by apply m_geq1. *)
+                    case (bad_event z v).
+                    * clear unused; move => unused; clear unused.
+                      (* search "`|_|". *)
+                      have group_terms : forall (a b c d : real), d >= 1%r =>
+                        a * b - a * c / d = a * (b - c / d) by smt().
+                      rewrite group_terms.
+                        apply m_geq1.
+                      (* have mu1_hv_ge0 : mu1 h v >= 0%r by rewrite - massE; apply ge0_mass. *)
+                      rewrite StdOrder.RealOrder.normrZ.
+                        rewrite - massE; apply ge0_mass.
+                      (* have mu1_hv_le1 : mu1 h v <= 1%r by rewrite - massE; apply le1_mass. *)
+                      have cancel_factor : forall (a b c : real),
+                        0%r <= a <= 1%r => b >= 0%r => c >= 0%r =>
+                        b <= c => a * b <= c by smt().
+                      apply cancel_factor.
+                        split.
+                        rewrite - massE; apply ge0_mass.
+                        move => unused. rewrite - massE; apply le1_mass.
+                        smt().
+                        have gvz_ge0 : mu1 (g v) z >= 0%r by rewrite - massE; apply ge0_mass.                                 have fz_ge0 : mu1 f z >= 0%r by rewrite - massE; apply ge0_mass.
+                        have m_ge1_inst : M >= 1%r by apply m_geq1.
+                        smt(). 
+                      apply (leq_trans _ (`|mu1 (g v) z| + `|mu1 f z / M|)).
+                      apply StdOrder.RealOrder.ler_norm_sub.
+                      rewrite StdOrder.RealOrder.ger0_norm.
+                        rewrite - massE; apply ge0_mass.
+                      rewrite StdOrder.RealOrder.ger0_norm.
+                        have fz_ge0 : mu1 f z >= 0%r by rewrite - massE; apply ge0_mass.
+                        have m_geq1_inst : M >= 1%r by apply m_geq1.
+                        smt().
+                      auto.
+                    * clear unused; move => unused; clear unused.
+                      have ineq_fact : forall (a b c : real),
+                        a >= 0%r => b >= 0%r => c >= 1%r =>
+                        a + b / c >= 0%r by smt().
+                      apply ineq_fact.
+                        rewrite - massE; apply ge0_mass.
+                        rewrite - massE; apply ge0_mass.
+                        apply m_geq1.
+              * (* summable 2 *)
+                apply summableZ.
+                apply (summable_le_pos _ (fun z => mu1 (g v) z + inv M * mu1 f z)).
+                * apply summableD.
+                  * apply summable_mu1.
+                  * apply/summableZ/summable_mu1.
+                print summable_le_pos.
+                * move => z /=.
+                  split.
+                  * smt().
+                  * move => unused. clear unused.
+                    print StdOrder.RealOrder.ler_norm_sub.
+                    apply (leq_trans _ (`|mu1 (g v) z| + `|mu1 f z / M|)).
+                    apply StdOrder.RealOrder.ler_norm_sub.
+                    rewrite StdOrder.RealOrder.ger0_norm.
+                      rewrite - massE; apply ge0_mass.
+                    rewrite StdOrder.RealOrder.ger0_norm.
+                      have fz_ge0 : mu1 f z >= 0%r by
+                      rewrite - massE; apply ge0_mass.
+                      have m_ge0_inst : M >= 1%r by apply m_geq1.
+                      smt().
+                    auto.
+            * (* second hop *)
+              rewrite sumZ.
+              have cancel_const :
+                forall (a b c : real), a >= 0%r => b <= c => a * b <= c * a by smt().
+              apply cancel_const.
+              rewrite - massE; apply ge0_mass.
+              apply (leq_trans _ (sum (fun z => mu1 (g v) z + mu1 f z / M)) _).
+              * (* triangle *)
+                apply ler_sum.
+                * (* le *)
+                  move => z /=.
+
+                  apply (leq_trans _ (`|mu1 (g v) z| + `|mu1 f z / M|)).
+                  apply StdOrder.RealOrder.ler_norm_sub.
+                  rewrite StdOrder.RealOrder.ger0_norm.
+                    rewrite - massE; apply ge0_mass.
+                  rewrite StdOrder.RealOrder.ger0_norm.
+                    have fz_ge0 : mu1 f z >= 0%r by
+                    rewrite - massE; apply ge0_mass.
+                    have m_ge0_inst : M >= 1%r by apply m_geq1.
+                    smt().
+                  auto.
+                  print summable_le_pos.
+                * (* summable 1 *)
+                  apply (summable_le_pos _ (fun z => `|mu1 (g v) z| + `|mu1 f z / M|)).
+                  * (* summable_le_pos summable *)
+                    apply summableD.
+                    * have norm_extraneous :
+                        (fun z => `|mu1 (g v) z|) = (fun z => mu1 (g v) z).
+                      * apply fun_ext => z /=.
+                        apply StdOrder.RealOrder.ger0_norm.
+                        rewrite - massE; apply ge0_mass.
+                      rewrite norm_extraneous.
+                      apply summable_mu1.
+                    * have norm_extraneous :
+                        (fun z => `|mu1 f z / M|) = (fun z => inv M * mu1 f z).
+                      * apply fun_ext => z /=.
+                        apply StdOrder.RealOrder.ger0_norm.
+                        have fz_ge0 : mu1 f z >= 0%r by rewrite - massE; apply ge0_mass.
+                        have m_geq1_inst : M >= 1%r by apply m_geq1.
+                        smt().
+                      rewrite norm_extraneous.
+                      apply/summableZ/summable_mu1.
+                  * (* summable_le_pos correct *)
+                    move => z /=.
+                    split.
+                    * smt().
+                    * move => unused; clear unused.
+                      apply StdOrder.RealOrder.ler_norm_sub.
+                * (* summable 2 *)
+                  apply summableD.
+                  * apply summable_mu1.
+                  * have factorM :
+                      (fun (x : varMatrix) => mu1 f x / M) =
+                      (fun (x : varMatrix) => inv M * mu1 f x) by apply fun_ext; smt().
+                    rewrite factorM.
+                    apply/summableZ/summable_mu1.
+              * rewrite sumD.
+                * apply summable_mu1.
+                * have factorM :
+                    (fun (x : varMatrix) => mu1 f x / M) =
+                    (fun (x : varMatrix) => inv M * mu1 f x) by apply fun_ext; smt().
+                  rewrite factorM.
+                  apply/summableZ/summable_mu1.
+              have factorM :
+                (fun (x : varMatrix) => mu1 f x / M) =
+                (fun (x : varMatrix) => inv M * mu1 f x) by apply fun_ext; smt().
+              rewrite factorM.
+              clear factorM.
+              print weightE.
+              have first_term_is_mass :
+                (fun (x : varMatrix) => mu1 (g v) x) = mass (g v).
+              * apply fun_ext => z /=. rewrite massE. auto.
+              rewrite first_term_is_mass. clear first_term_is_mass.
+              rewrite sumZ.
+              have second_term_is_mass :
+                (fun (x : varMatrix) => mu1 f x) = mass f.
+              * apply fun_ext => z /=. rewrite massE. auto.
+              rewrite second_term_is_mass; clear second_term_is_mass.
+              rewrite - weightE.
+              rewrite g_ll.
+              rewrite - weightE.
+              rewrite f_ll.
+              (* hint for smt *)
+              have m_ge1_inst : M >= 1%r by apply m_geq1.
+              smt().
+      * (* ler_sum summable *)
+        apply (summable_le_pos _ (fun v => sum (fun z => (mu1 h v / M) * mu1 f z))).
+        print summable_le_pos.
+        * (* upper summable *)
+          have under_binding :
+            (fun (v : V) => sum (fun (z : varMatrix) => mu1 h v / M * mu1 f z)) =
+            (fun (v : V) => sum (fun (z : varMatrix) => mu1 f z) * (mu1 h v / M)).
+          * apply fun_ext => v /=.
+            print sumZ.
+            have more_under_binding :
+              (fun (z : varMatrix) => mu1 h v * mu1 f z / M) =
+              (fun (z : varMatrix) => (mu1 h v / M) * mu1 f z) by apply fun_ext; smt().
+            rewrite more_under_binding.
+            rewrite sumZ.
+            smt().
+          rewrite under_binding; clear under_binding.
+          apply summableZ.
+          have factor_M : (fun (x : V) => mu1 h x / M) = (fun (x : V) => inv M * mu1 h x)
+            by apply fun_ext; smt().
+          rewrite factor_M.
+          apply summableZ.
+          apply summable_mu1.
+        * (* upper correct *)
+          move => v /=.
+          split.
+          * (* geq0 *)
+            apply ge0_sum.
+            move => z /=.
+            case (bad_event z v).
+            * have ineq_fact : forall a b c, a >= 0%r => b >= 0%r => c >= 1%r => a * b / c >= 0%r.
+                smt().
+              move => unused.
+              apply ineq_fact.
+              rewrite - massE; apply ge0_mass.
+              rewrite - massE; apply ge0_mass.
+              apply m_geq1.
+            * auto.
+          * (* upper bounded *)
+            move => unused; clear unused.
+            apply ler_sum.
+            * (* ler_sum le *)
+              move => z /=.
+              case (bad_event z v).
+              * smt().
+              * move => unused.
+                have ineq_fact : forall a b c, a >= 0%r => b >= 0%r => c >= 1%r => a * b / c >= 0%r.
+                  smt().
+                apply ineq_fact.
+                rewrite - massE; apply ge0_mass.
+                rewrite - massE; apply ge0_mass.
+                apply m_geq1.
+            * (* ler_sum summable *)
+              apply (summable_le_pos _ (fun z => (mu1 h v / M) * mu1 f z)).
+              * (* upper summable *)
+                apply summableZ.
+                apply summable_mu1.
+              * (* upper correct *)
+                move => z /=.
+                split.
+                * (* ge0 *)
+                  case (bad_event z v).
+                  * have ineq_fact :
+                      forall a b c, a >= 0%r => b >= 0%r => c >= 1%r => a * b / c >= 0%r by smt().
+                    move => unused.
+                    apply ineq_fact.
+                    rewrite - massE; apply ge0_mass.
+                    rewrite - massE; apply ge0_mass.
+                    apply m_geq1.
+                  * auto.
+                * move => unused; clear unused.
+                  (* upper bounded *)
+                  case (bad_event z v).
+                  * auto.
+                  * have ineq_fact :
+                      forall a b c, a >= 0%r => b >= 0%r => c >= 1%r => a * b / c >= 0%r by smt().
+                    move => unused.
+                    apply ineq_fact.
+                    rewrite - massE; apply ge0_mass.
+                    rewrite - massE; apply ge0_mass.
+                    apply m_geq1.
+            * (* ler_sum summable *)
+              have under_binding :
+                (fun (z : varMatrix) => mu1 h v * mu1 f z / M) = fun z => (mu1 h v / M) * mu1 f z.
+              * apply fun_ext; smt().
+              rewrite under_binding; clear under_binding.
+              apply summableZ.
+              apply summable_mu1.
     have inner_sum_simpl :
       (fun v => sum
         (fun z => if bad_event z v then mu1 h v * mu1 f z / M else 0%r)) =
@@ -1362,7 +1745,50 @@ proof.
     apply (leq_trans _ (
       sum (fun v => (eps * inv M) * mu1 h v)) _).
     * (* hop1 *)
-      admit.
+      apply ler_sum.
+      * (* ler correct *)
+        move => v /=.
+        rewrite /bad_event_unlikely in mu_bad_event.
+        (* inequality. Hints for smt. *)
+        have mu1_hv_ge0 : mu1 h v >= 0%r by rewrite - massE; apply ge0_mass.
+        have m_geq1_inst : M >= 1%r by apply m_geq1.
+        have ineq_fact :
+          forall (a b c d : real), a >= 0%r => b <= d => c >= 1%r => a * b / c <= d * a / c.
+        * smt().
+        apply ineq_fact.
+          assumption.
+          apply mu_bad_event.
+          assumption.
+      * (* ler summable 1 *)
+        apply (summable_le_pos _ (fun v => (eps / M) * mu1 h v)).
+        * (* summable_le_pos - upper summable *)
+          apply summableZ.
+          apply summable_mu1.
+        * (* summable_le_pos - bound correct *)
+          move => v /=.
+          split.
+          * (* geq0 *)
+            have prod_of_ge0_overM :
+              forall (a b m : real),
+                a >= 0%r => b >= 0%r => m >= 1%r =>
+                a * b / m >= 0%r by smt().
+            apply prod_of_ge0_overM.
+            * rewrite - massE; apply ge0_mass.
+            * apply ge0_mu.
+            * apply m_geq1.
+          * (* upperbound *)
+            move => unused; clear unused.
+            rewrite /bad_event_unlikely in mu_bad_event.
+            have ineq_fact :
+              forall (m1_hv m_f m e : real),
+                m1_hv >= 0%r => m_f <= e => m >= 1%r => m1_hv * m_f / m <= e * m1_hv / m by smt().
+            apply ineq_fact.
+            rewrite - massE; apply ge0_mass.
+            apply mu_bad_event.
+            apply m_geq1.
+      * (* ler summable 2 *)
+        apply summableZ.
+        apply summable_mu1.
     * (* hop2 *)
       rewrite sumZ.
       have mu1_mass :
