@@ -46,74 +46,63 @@ op t = fun good => dunit (if good then Some 0 else None).
 
 
 op dA = dlet h (fun v =>
-    dlet (g v) (fun z =>
-        dlet (dbiased ((mu1 f z) / M / (mu1 (g v) z)))
-            (fun good => dunit (if good then Some (z, v) else None))
-    )
+  dlet (g v) (fun z =>
+    dlet (dbiased ((mu1 f z) / M / (mu1 (g v) z)))
+      (fun good => dunit (if good then Some (z, v) else None))
+  )
 ).
 
 lemma dA_ll :
   is_lossless dA.
 proof.
-  rewrite /dA.
-  apply dlet_ll.
-  apply h_ll.
-  move => v v_supp /=.
-  apply dlet_ll.
-  apply g_ll.
-  move => z z_supp /=.
-  apply dlet_ll.
-  apply dbiased_ll.
-  move => good good_supp /=.
-  apply dunit_ll.
+rewrite /dA.
+apply dlet_ll; 1: apply h_ll.
+move => v v_supp /=.
+apply dlet_ll; 1: apply g_ll.
+move => z z_supp /=.
+apply dlet_ll; 1: apply dbiased_ll.
+move => ? ? /=.
+by apply dunit_ll.
 qed.
 
 lemma dA_dlet1E out :
-    mu1 dA out =
-    sum (fun v =>
-        mu1 h v *
-        sum (fun z =>
-            mu1 (g v) z *
-            sum (fun good =>
-                mu1 (dbiased ((mu1 f z) / M / (mu1 (g v) z))) good *
-                mu1 (dunit (if good then Some (z, v) else None)) out))).
+mu1 dA out =
+sum (fun v =>
+  mu1 h v *
+  sum (fun z =>
+    mu1 (g v) z *
+    sum (fun good =>
+      mu1 (dbiased ((mu1 f z) / M / (mu1 (g v) z))) good *
+      mu1 (dunit (if good then Some (z, v) else None)) out))).
 proof.
 rewrite /dA.
 rewrite dlet1E.
 apply eq_sum => /= v.
 congr.
-
 rewrite dlet1E.
 apply eq_sum => /= z.
 congr.
-
 rewrite dlet1E.
-apply eq_sum.
-auto.
+apply eq_sum => //.
 qed.
 
 lemma dA_simpl out :
-    mu1 dA out =
-    sum (fun v =>
-    sum (fun z =>
-        mu1 h v *
-        mu1 (g v) z *
-        (
-            mu1 (dbiased ((mu1 f z) / M / (mu1 (g v) z))) true *
-            mu1 (dunit (Some (z, v))) out
-            +
-            mu1 (dbiased ((mu1 f z) / M / (mu1 (g v) z))) false *
-            mu1 (dunit None) out
-        )
-    )).
+  mu1 dA out =
+  sum (fun v =>
+  sum (fun z =>
+    mu1 h v *
+    mu1 (g v) z * (
+      mu1 (dbiased ((mu1 f z) / M / (mu1 (g v) z))) true *
+      mu1 (dunit (Some (z, v))) out +
+      mu1 (dbiased ((mu1 f z) / M / (mu1 (g v) z))) false *
+      mu1 (dunit None) out))).
 proof.
-    rewrite dA_dlet1E.
-    apply eq_sum => /= v.
-    rewrite - sumZ.
-    simplify.
-    apply eq_sum => /= z.
-  rewrite RField.mulrA; congr.
-  rewrite sum_over_bool => //.
+rewrite dA_dlet1E.
+apply eq_sum => /= v.
+rewrite - sumZ => /=.
+apply eq_sum => /= z.
+rewrite RField.mulrA; congr.
+rewrite sum_over_bool => //.
 qed.
 
 op bad_event z v = mu1 f z > M * (mu1 (g v) z).
@@ -125,130 +114,78 @@ lemma dA_output_good_supp v z:
     z \in g v =>
     mu1 dA (Some (z, v)) = (mu1 f z / M) * (mu1 h v).
 proof.
-    move => not_bad v_in_h z_in_gv.
-    rewrite /bad_event in not_bad.
-    rewrite dA_simpl.
-    rewrite dunit1E.
-    simplify.
-
-    rewrite (sumD1 _ v).
-        apply (summable_fin _ [v]).
-        simplify.
-        move => x.
-        rewrite (sumD1 _ z).
-            apply (summable_fin _ [z]).
-            move => x0.
-            simplify.
-            rewrite dunit1E.
-            smt().
-
-        simplify.
-        case (x = v).
-        trivial.
-        move => x_ne_v.
-        simplify.
-        rewrite dunit1E.
-        simplify.
-        have first_term_zero: b2r (x = v) = 0%r.
-            smt().
-        rewrite first_term_zero => /=.
-        apply sum0_eq.
-        simplify.
-        move => x0.
-        rewrite dunit1E.
-        case (x0 = z).
-        trivial.
-        simplify.
-        move => x0_ne_z.
-        smt().
+move => not_bad v_in_h z_in_gv.
+rewrite /bad_event in not_bad.
+rewrite dA_simpl.
+rewrite dunit1E /=.
+rewrite (sumD1 _ v) => /=.
+  apply (summable_fin _ [v]) => /= x.
+  rewrite (sumD1 _ z) => /=.
+    apply (summable_fin _ [z]) => x0 /=.
+    rewrite dunit1E => /#.
+  case (x = v); 1: trivial.
+  move => x_ne_v => //.
+  rewrite dunit1E.
+  have first_term_zero: b2r (x = v) = 0%r by smt().
+  rewrite first_term_zero /=.
+  apply sum0_eq => x0 /=.
+  rewrite dunit1E.
+  case (x0 = z) => /#.
+rewrite (sumD1 _ z) => /=.
+  apply (summable_fin _ [z]).
+  move => /= x.
+  case (x = z); 1: by smt().
+  move => x_ne_z.
+  rewrite dunit1E => /#.
+rewrite dunit1E dbiased1E /=.
     
-    simplify.   
-    rewrite (sumD1 _ z).
-        apply (summable_fin _ [z]).
-        move => /= x.
-        case (x <> z).
-        move => x_ne_z.
-        rewrite dunit1E.
-        smt().
-        smt().
-    simplify.
-    rewrite dunit1E.
-    simplify.
+have clamped_upper: mu1 f z / (M * mu1 (g v) z) <= 1%r.
+  apply ler_pdivr_mulr.
+  apply pmulr_lgt0; 1: by assumption.
+  by apply M_positive => //.
+  smt().
 
-    rewrite dbiased1E => /=.
-    
-    have clamped_upper: mu1 f z / (M * mu1 (g v) z) <= 1%r.
-      apply ler_pdivr_mulr.
-      apply pmulr_lgt0; 1: assumption.
-      apply M_positive => //.
-      simplify.
-      smt().
+have clamped_lower: mu1 f z / (M * mu1 (g v) z) >= 0%r.
+  apply divr_ge0.
+  * case (z \in f); 1: by smt().
+    move => no_sup.
+    have not_supp : mu1 f z = 0%r.
+      apply supportPn.
+      by apply no_sup.
+    by rewrite not_supp => //.
+  * by apply pmulr_rge0; 1: apply M_positive; apply ge0_mu.
 
-    have clamped_lower: mu1 f z / (M * mu1 (g v) z) >= 0%r.
-      search (_ / _ >= 0%r)%Real.
-      search (0%r <= _ / _)%Real.
-      apply divr_ge0.
-        case (z \in f).
-            smt().
-            move => no_sup.
-            have not_supp : mu1 f z = 0%r.
-                apply supportPn.
-                apply no_sup.
-            rewrite not_supp.
-            auto.
-        search (0%r <= _ * _)%Real.
-        apply pmulr_rge0; 1: apply M_positive; apply ge0_mu.
+have clamped: clamp (mu1 f z / (M * mu1 (g v) z)) = mu1 f z / (M * mu1 (g v) z) by smt().
+rewrite clamped /=.
 
-    have clamped: clamp (mu1 f z / (M * mu1 (g v) z)) = mu1 f z / (M * mu1 (g v) z).
-        smt().
-    rewrite clamped.
+clear clamped clamped_upper clamped_lower.
 
-    simplify.
+have cancel: mu1 h v * mu1 (g v) z * mu1 f z / (M * mu1 (g v) z) = mu1 h v * mu1 f z / M.
+  field.
+  (* How does field actually work...? *)
+  apply RField.mulf_neq0.
+  apply gtr_eqF.
+  apply M_positive.
+  apply gtr_eqF.
+  apply z_in_gv.
+  apply gtr_eqF.
+  apply M_positive.
+rewrite cancel.
+clear cancel.
 
-    have gvz_cancelable : mu1 (g v) z > 0%r.
-        smt().
+have divide_and_conquer : forall (A B C D : real), A = D => B = 0%r => C = 0%r => A + B + C = D.
+  by auto.
 
-    search (_ / _)%Real.
-
-    have cancel: mu1 h v * mu1 (g v) z * mu1 f z / (M * mu1 (g v) z) = mu1 h v * mu1 f z / M.
-        field.
-        apply RField.mulf_neq0.
-        apply gtr_eqF.
-        apply M_positive.
-        apply gtr_eqF.
-        apply z_in_gv.
-        apply gtr_eqF.
-        apply M_positive.
-
-    rewrite cancel.
-    clear cancel.
-    clear gvz_cancelable.
-    clear clamped clamped_upper clamped_lower.
-
-    have divide_and_conquer : forall (A B C D : real), A = D => B = 0%r => C = 0%r => A + B + C = D.
-        auto.
-
-    apply divide_and_conquer.
-        smt().
-
-        apply sum0_eq => /=.
-        move => x.
-        rewrite dunit1E.
-        case (x <> z).
-            smt().
-            smt().
-
-        apply sum0_eq => /=.
-        move => x.
-        case (x = v).
-            smt().
-            
-            simplify.
-            move => x_ne_v.
-            apply sum0_eq => /=.
-            move => x0.
-            rewrite dunit1E.
-            smt().
+apply divide_and_conquer.
+* smt().
+* apply sum0_eq => /= x.
+  rewrite dunit1E.
+  by case (x <> z) => /#.
+* apply sum0_eq => /= x.
+  case (x = v) => /=; 1: smt().
+  move => x_ne_v.
+  apply sum0_eq => /= x0.
+  by rewrite dunit1E /#.
 qed.
 
 lemma dA_output_good :
@@ -256,169 +193,98 @@ lemma dA_output_good :
     ! bad_event z v =>
     mu1 dA (Some (z, v)) = mu1 f z / M * mu1 h v.
 proof.
-  move => v z.
-  case (v \in h).
-  * move => v_in_h.
-    case (z \in g v).
-    * move => z_in_gv.
-      move => bad_ev.
-      apply dA_output_good_supp.
-      assumption.
-      assumption.
-      assumption.
-    * move => z_no_supp bad_ev.
-      rewrite supportPn in z_no_supp.
-      rewrite /bad_event in bad_ev.
-      have z_notin_f : mu1 f z = 0%r.
-        rewrite z_no_supp in bad_ev.
-        simplify bad_ev.
-        have bad_ev' : mu1 f z <= 0%r.
-          smt().
-        have mu1_non_neg : mu1 f z >= 0%r.
-          rewrite ge0_mu.
-          smt().
-      rewrite z_notin_f.
-      simplify.
-      rewrite dA_simpl.
-      apply sum0_eq.
-      simplify.
-      move => v_.
-      apply sum0_eq.
-      move => z_.
-      rewrite dunit1E.
-      simplify.
-      rewrite dunit1E.
-      case (z_ = z).
-      * case (v_ = v).
-        * move => v_eq z_eq.
-          rewrite v_eq.
-          rewrite z_eq.
-          simplify.
-          rewrite z_no_supp.
-          auto.
-        * smt().
-      * smt().
-  * move => v_no_supp.
-    move => bad_ev.
-    rewrite supportPn in v_no_supp.
-    rewrite v_no_supp.
-    simplify.
-    rewrite dA_simpl.
-    apply sum0_eq.
-    simplify.
-    move => v_.
-    apply sum0_eq.
-    move => z_.
-    rewrite dunit1E.
-    simplify.
-    rewrite dunit1E.
-    case (v_ = v).
-    * move => v_eq.
-      rewrite v_eq.
-      rewrite v_no_supp.
-      auto.
-    * smt().
+move => v z.
+case (v \in h).
+* move => v_in_h.
+  case (z \in g v).
+  * move => z_in_gv bad_ev.
+    apply dA_output_good_supp; by assumption.
+  * move => z_no_supp bad_ev.
+    rewrite supportPn in z_no_supp.
+    rewrite /bad_event in bad_ev.
+    have z_notin_f : mu1 f z = 0%r.
+      rewrite z_no_supp in bad_ev.
+      (* Following line doesn't work *)
+      simplify bad_ev.
+      (* How do I use simplify on a hypothesis? *)
+      have bad_ev' : mu1 f z <= 0%r.
+        smt().
+      have mu1_non_neg : mu1 f z >= 0%r.
+        rewrite ge0_mu.
+      smt().
+    rewrite z_notin_f /= dA_simpl.
+    apply sum0_eq => v_ /=.
+    apply sum0_eq => z_ /=.
+    (* How to rewrite all? *)
+    rewrite dunit1E dunit1E => /=.
+    case (z_ = z); 2: smt().
+    case (v_ = v); 2: smt().
+    move => v_eq z_eq.
+    by rewrite v_eq z_eq /= z_no_supp //.
+* move => v_no_supp bad_ev.
+  rewrite supportPn in v_no_supp.
+  rewrite v_no_supp => /=.
+  rewrite dA_simpl.
+  apply sum0_eq => v_ /=.
+  apply sum0_eq => z_ /=.
+  (* How to rewrite all? *)
+  rewrite dunit1E dunit1E.
+  case (v_ = v); 2: smt().
+  move => v_eq.
+  by rewrite v_eq v_no_supp //.
 qed.
 
 lemma dA_output_bad_supp v z:
-    bad_event z v =>
-    v \in h =>
-    z \in g v =>
-    mu1 dA (Some (z, v)) = (mu1 (g v) z) * (mu1 h v).
+  bad_event z v =>
+  v \in h =>
+  z \in g v =>
+  mu1 dA (Some (z, v)) = (mu1 (g v) z) * (mu1 h v).
 proof.
-    move => bad v_in_h z_in_gv.
-    rewrite /bad_event in bad.
-    rewrite dA_simpl.
-    rewrite dunit1E.
-    simplify.
+move => bad v_in_h z_in_gv.
+rewrite /bad_event in bad.
+rewrite dA_simpl.
+rewrite dunit1E => /=.
+rewrite (sumD1 _ v) /=.
+  apply (summable_fin _ [v]) => x /=.
+  rewrite (sumD1 _ z) /=.
+    apply (summable_fin _ [z]) => x0 /=.
+    rewrite dunit1E /#.
+  case (x = v); 1: by trivial.
+  move => x_ne_v /=.
+  rewrite dunit1E /=.
+  have first_term_zero: b2r (x = v) = 0%r by smt().
+  rewrite first_term_zero => /=.
+  apply sum0_eq => x0 /=.
+  rewrite dunit1E /#.
+rewrite (sumD1 _ z) /=.
+  apply (summable_fin _ [z]).
+  move => /= x.
+  case (x = z); 1: smt().
+  rewrite dunit1E /#.
+rewrite dunit1E dbiased1E /=.
 
-    rewrite (sumD1 _ v).
-        apply (summable_fin _ [v]).
-        simplify.
-        move => x.
-        rewrite (sumD1 _ z).
-            apply (summable_fin _ [z]).
-            move => x0.
-            simplify.
-            rewrite dunit1E.
-            smt().
+have unclamped_upper: mu1 f z / (M * mu1 (g v) z) > 1%r.
+  have H : forall X Y, X > 0%r => X < Y => 1%r < Y / X by smt().
+  apply H; 2: smt().
+  apply mulr_gt0; 2: smt().
+  apply M_positive.
+have clamping : clamp (mu1 f z / (M * mu1 (g v) z)) = 1%r.
+  smt().
 
-        simplify.
-        case (x = v).
-        trivial.
-        move => x_ne_v.
-        simplify.
-        rewrite dunit1E.
-        simplify.
-        have first_term_zero: b2r (x = v) = 0%r.
-            smt().
-        rewrite first_term_zero => /=.
-        apply sum0_eq.
-        simplify.
-        move => x0.
-        rewrite dunit1E.
-        case (x0 = z).
-        trivial.
-        simplify.
-        move => x0_ne_z.
-        smt().
-    
-    simplify.   
-    rewrite (sumD1 _ z).
-        apply (summable_fin _ [z]).
-        move => /= x.
-        case (x <> z).
-        move => x_ne_z.
-        rewrite dunit1E.
-        smt().
-        smt().
-    simplify.
-    rewrite dunit1E.
-    simplify.
-
-    rewrite dbiased1E => /=.
-    
-    have unclamped_upper: mu1 f z / (M * mu1 (g v) z) > 1%r.
-        have H : forall X Y, X > 0%r => X < Y => 1%r < Y / X.
-            smt().
-        apply H.
-        apply mulr_gt0.
-        apply M_positive.
-        smt().
-        smt().
-        
-    have clamping : clamp (mu1 f z / (M * mu1 (g v) z)) = 1%r.
-        smt().
-    
-    rewrite clamping.
-    simplify.        
-    have add_cancel_left :
-      forall T1 T2,
-        T1 = 0%r => T2 = 0%r => mu1 h v * mu1 (g v) z + T1 + T2 = mu1 (g v) z * mu1 h v.
-      smt().
-        
-    apply add_cancel_left.
-        
-    apply sum0_eq.
-    simplify.
-
-    move => x.
-    rewrite dunit1E.
-    case (x <> z).
-        smt().
-        smt().
-
-    apply sum0_eq => /=.
-    move => x.
-    case (x = v).
-        smt().
-
-        simplify.
-        move => x_ne_v.
-        apply sum0_eq => /=.
-        move => x0.
-        rewrite dunit1E.
-        smt().
+rewrite clamping /=.
+have add_cancel_left :
+  forall T1 T2,
+    T1 = 0%r => T2 = 0%r => mu1 h v * mu1 (g v) z + T1 + T2 = mu1 (g v) z * mu1 h v.
+  smt().
+apply add_cancel_left.
+* apply sum0_eq => x /=.
+  rewrite dunit1E.
+  case (x <> z); smt().
+* apply sum0_eq => x /=.
+  case (x = v); 1: smt().
+  move => x_ne_v /=.
+  apply sum0_eq => x0 /=.
+  by rewrite dunit1E /#.
 qed.
 
 lemma dA_output_bad :
@@ -426,59 +292,32 @@ lemma dA_output_bad :
     bad_event z v =>
     mu1 dA (Some (z, v)) = mu1 (g v) z * mu1 h v.
 proof.
-  move => v z.
-  case (v \in h).
-  * move => v_in_h.
-    case (z \in g v).
-    * move => z_in_gv.
-      move => bad_ev.
-      apply dA_output_bad_supp.
-      assumption.
-      assumption.
-      assumption.
-    * move => z_no_supp bad_ev.
-      rewrite supportPn in z_no_supp.
-      rewrite z_no_supp.
-      simplify.
-      rewrite dA_simpl.
-      apply sum0_eq.
-      simplify.
-      move => v_.
-      apply sum0_eq.
-      move => z_.
-      rewrite dunit1E.
-      simplify.
-      rewrite dunit1E.
-      case (z_ = z).
-      * case (v_ = v).
-        * move => v_eq z_eq.
-          rewrite v_eq.
-          rewrite z_eq.
-          simplify.
-          rewrite z_no_supp.
-          auto.
-        * smt().
-      * smt().
-  * move => v_no_supp.
-    move => bad_ev.
-    rewrite supportPn in v_no_supp.
-    rewrite v_no_supp.
-    simplify.
+move => v z.
+case (v \in h).
+* move => v_in_h.
+  case (z \in g v).
+  * move => z_in_gv bad_ev.
+    apply dA_output_bad_supp; by assumption.
+  * move => z_no_supp bad_ev.
+    rewrite supportPn in z_no_supp.
+    rewrite z_no_supp /=.
     rewrite dA_simpl.
-    apply sum0_eq.
-    simplify.
-    move => v_.
-    apply sum0_eq.
-    move => z_.
-    rewrite dunit1E.
-    simplify.
-    rewrite dunit1E.
-    case (v_ = v).
-    * move => v_eq.
-      rewrite v_eq.
-      rewrite v_no_supp.
-      auto.
-    * smt().
+    apply sum0_eq => v_ /=.
+    apply sum0_eq => z_ /=.
+    rewrite dunit1E dunit1E /=.
+    case (z_ = z); 2: smt().
+    case (v_ = v); 2: smt().
+    move => v_eq z_eq.
+    by rewrite v_eq z_eq z_no_supp //.
+* move => v_no_supp bad_ev.
+  rewrite supportPn in v_no_supp.
+  rewrite v_no_supp dA_simpl /=.
+  apply sum0_eq => v_ /=.
+  apply sum0_eq => z_ /=.
+  rewrite dunit1E dunit1E /=.
+  case (v_ = v); 2: smt().
+  move => v_eq.
+  by rewrite v_eq v_no_supp //.
 qed.
 
 lemma dA_output_something :
@@ -489,48 +328,33 @@ lemma dA_output_something :
           (mu1 (g v) z) else
           (mu1 f z) / M))).
 proof.
-  move => eps bad_event_eps.
-  rewrite muE => //.
-  simplify.
-  rewrite sumD1_None.
-    simplify.
-    apply (summable_le (mu1 dA) _).
-    * apply summable_mu1.
-    * simplify.
-      move => x.
-      case (x = None).
-      * smt().
-      * simplify.
-        smt().
-  simplify.
-  have LHS_summable : summable (fun (y : varMatrix * V) => mu1 dA (Some y)).
-    have relabel_fn_comp :
-      (fun (y : varMatrix * V) => mu1 dA (Some y)) = (mu1 dA) \o Some.
-      smt().
-    rewrite relabel_fn_comp.
-    rewrite summable_inj.
-      smt().
-    rewrite summable_mu1.
-  rewrite sum_pair.
-    apply LHS_summable.
-  rewrite sum_swap.
-    apply LHS_summable.
-  apply eq_sum.
-  move => v.
-  simplify.
-  rewrite - sumZ.
-  apply eq_sum.
-  move => z.
-  simplify.
-  case (bad_event z v).
-  * move => bad_ev.
-    rewrite dA_output_bad.
-    assumption.
+move => eps bad_event_eps.
+rewrite muE => // /=.
+rewrite sumD1_None => /=.
+  apply (summable_le (mu1 dA) _).
+  * by apply summable_mu1.
+  * smt().
+have LHS_summable : summable (fun (y : varMatrix * V) => mu1 dA (Some y)).
+  have relabel_fn_comp :
+    (fun (y : varMatrix * V) => mu1 dA (Some y)) = (mu1 dA) \o Some.
     smt().
-  * move => neg_bad_ev.
-    rewrite dA_output_good.
-    assumption.
-    smt().
+  rewrite relabel_fn_comp.
+  rewrite summable_inj; 1: smt().
+  rewrite summable_mu1.
+rewrite sum_pair.
+  apply LHS_summable.
+rewrite sum_swap.
+  apply LHS_summable.
+apply eq_sum => v /=.
+rewrite - sumZ.
+apply eq_sum => z /=.
+case (bad_event z v).
+* move => bad_ev.
+  rewrite dA_output_bad; 1: by assumption.
+  smt().
+* move => neg_bad_ev.
+  rewrite dA_output_good; 1: by assumption.
+  smt().
 qed.
 
 lemma dA_output_something_summable_inner :
@@ -538,29 +362,23 @@ lemma dA_output_something_summable_inner :
     summable (fun (z : varMatrix) =>
       if bad_event z v then mu1 (g v) z else mu1 f z / M).
 proof.
-  move => v.
-  apply (summable_le_pos _ (fun z => mu1 (g v) z + mu1 f z / M)).
-  * (* upper sequence is summable *)
-    apply summableD.
-    apply summable_mu1.
-
-    have rewrite_under_binding : (fun x => mu1 f x / M) = (fun x => (1%r / M) * mu1 f x).
-      apply fun_ext.
-      smt().
-    rewrite rewrite_under_binding.
-
-    apply summableZ.
-    apply summable_mu1.
-  * (* upper sequence is correct *)
-    move => z.
-    simplify.
-
-    (* -- ANTI-PATTERN? -- *)
-    (* hints for smt...? *)
-    have mu_gv_ge0 : mu1 (g v) z >= 0%r by apply ge0_mu.
-    have mu_fz_ge0 : mu1 f z >= 0%r by apply ge0_mu.
-    have m_pos : M > 0%r by apply M_positive.
-    smt().
+move => v.
+apply (summable_le_pos _ (fun z => mu1 (g v) z + mu1 f z / M)).
+* (* upper sequence is summable *)
+  apply summableD; 1: by apply summable_mu1.
+  have rewrite_under_binding : (fun x => mu1 f x / M) = (fun x => (1%r / M) * mu1 f x).
+    apply fun_ext => /#.
+  rewrite rewrite_under_binding.
+  apply summableZ.
+  by apply summable_mu1.
+* (* upper sequence is correct *)
+  move => z /=.
+  (* -- ANTI-PATTERN? -- *)
+  (* hints for smt...? *)
+  have mu_gv_ge0 : mu1 (g v) z >= 0%r by apply ge0_mu.
+  have mu_fz_ge0 : mu1 f z >= 0%r by apply ge0_mu.
+  have m_pos : M > 0%r by apply M_positive.
+  smt().
 qed.
 
 lemma dA_output_something_summable :
@@ -569,92 +387,81 @@ lemma dA_output_something_summable :
     sum (fun (z : varMatrix) =>
       if bad_event z v then mu1 (g v) z else mu1 f z / M)).
 proof.
-  (* Bringing this into context so smt works *)
-  have m_pos : M > 0%r by apply M_positive.
+(* Bringing this into context so smt works *)
+have m_pos : M > 0%r by apply M_positive.
 
-  apply (summableM_bound (1%r + 1%r / M) _ _).
-  * smt().
-  * (* left side summable *)
-    apply summable_mu1.
-  * (* right side bounded *)
-    simplify.
-    move => v.
-    have abs_removable :
-      sum (fun (z : varMatrix) =>
-       if bad_event z v then mu1 (g v) z else mu1 f z / M) >= 0%r.
-      apply ge0_sum.
-      simplify.
-      move => z.
-      case (bad_event z v).
-      * move => unused. apply ge0_mu.
-      * move => unused.
-        have remove_denom : forall (a b : real), a > 0%r => b >= 0%r => b / a >= 0%r.
-          smt().
-        apply remove_denom.
+apply (summableM_bound (1%r + 1%r / M) _ _).
+* smt().
+* (* left side summable *)
+  apply summable_mu1.
+* (* right side bounded *)
+  move => v /=.
+  have abs_removable :
+    sum (fun (z : varMatrix) =>
+     if bad_event z v then mu1 (g v) z else mu1 f z / M) >= 0%r.
+    apply ge0_sum => /= z.
+    case (bad_event z v).
+    * move => _. apply ge0_mu.
+    * move => _.
+      have remove_denom : forall (a b : real), a > 0%r => b >= 0%r => b / a >= 0%r.
+        smt().
+      apply remove_denom.
+        apply M_positive.
+      apply ge0_mu.
+  rewrite /"`|_|".
+  rewrite abs_removable => /=.
+  have bound_by_sum :
+    sum (fun (z : varMatrix) => if bad_event z v then mu1 (g v) z else mu1 f z / M) <=
+    sum (fun (z : varMatrix) => mu1 (g v) z + mu1 f z / M).
+    apply ler_sum_pos.
+    * move => z /=.
+      split.
+      * case (bad_event z v).
+        * move => unused. apply ge0_mu.
+        * move => unused.
+          have remove_denom : forall (a b : real), a > 0%r => b >= 0%r => b / a >= 0%r.
+            smt().
+          apply remove_denom.
           apply M_positive.
-        apply ge0_mu.
-    rewrite /"`|_|".
-    rewrite abs_removable.
-    simplify.
-    have bound_by_sum :
-      sum (fun (z : varMatrix) => if bad_event z v then mu1 (g v) z else mu1 f z / M) <=
-      sum (fun (z : varMatrix) => mu1 (g v) z + mu1 f z / M).
-      apply ler_sum_pos.
-      * move => z.
-        simplify.
-        split.
-        * case (bad_event z v).
-          * move => unused. apply ge0_mu.
-          * move => unused.
-            have remove_denom : forall (a b : real), a > 0%r => b >= 0%r => b / a >= 0%r.
-              smt().
-            apply remove_denom.
-            apply M_positive.
-            apply ge0_mu.
+          by apply ge0_mu.
+      * move => _.
+        case (bad_event z v).
         * move => _.
-          case (bad_event z v).
-          * move => _.
-            have mu_pos : mu1 f z >= 0%r by apply ge0_mu.
-            smt().
-          * move => _.
-            have muf_pos : mu1 f z >= 0%r by apply ge0_mu.
-            have mugv_pos : mu1 (g v) z >= 0%r by apply ge0_mu.
-            smt().
-      * apply summableD.
-        apply summable_mu1.
-        have rewrite_under_binding :
-          (fun (x : varMatrix) => mu1 f x / M) = (fun (x : varMatrix) => (1%r / M) * mu1 f x).
-          apply fun_ext.
+          have mu_pos : mu1 f z >= 0%r by apply ge0_mu.
           smt().
-        rewrite rewrite_under_binding.
-        apply summableZ.
-        apply summable_mu1.
-    have sum_bounded : (sum (fun (z : varMatrix) => mu1 (g v) z + mu1 f z / M) <= (1%r + 1%r / M)).
-      rewrite sumD.
-      * apply summable_mu1.
-      * have rewrite_under_binding :
-          (fun (x : varMatrix) => mu1 f x / M) = (fun (x : varMatrix) => (1%r / M) * mu1 f x).
-          apply fun_ext.
+        * move => _.
+          have muf_pos : mu1 f z >= 0%r by apply ge0_mu.
+          have mugv_pos : mu1 (g v) z >= 0%r by apply ge0_mu.
           smt().
-        rewrite rewrite_under_binding.
-        apply summableZ.
-        apply summable_mu1.
-      have sum_gv_leq1 : (sum (fun (x : varMatrix) => mu1 (g v) x) <= 1%r).
-        search (_ <= 1%r).
-        search sum.
+    * apply summableD.
+      apply summable_mu1.
+      have rewrite_under_binding :
+          (fun (x : varMatrix) => mu1 f x / M) = (fun (x : varMatrix) => (1%r / M) * mu1 f x).
+        by apply fun_ext => /#.
+      rewrite rewrite_under_binding.
+      apply summableZ.
+      by apply summable_mu1.
+  have sum_bounded : (sum (fun (z : varMatrix) => mu1 (g v) z + mu1 f z / M) <= (1%r + 1%r / M)).
+    rewrite sumD.
+    * apply summable_mu1.
+    * have rewrite_under_binding :
+        (fun (x : varMatrix) => mu1 f x / M) = (fun (x : varMatrix) => (1%r / M) * mu1 f x).
+        apply fun_ext => /#.
+      rewrite rewrite_under_binding.
+      apply summableZ.
+      apply summable_mu1.
+    * have sum_gv_leq1 : (sum (fun (x : varMatrix) => mu1 (g v) x) <= 1%r).
         rewrite -weightE.
         apply le1_mu.
       have sum_fv_leq1_invM : sum (fun (x : varMatrix) => mu1 f x / M) <= 1%r / M.
-        
         have rewrite_under_binding :
           (fun (x : varMatrix) => mu1 f x / M) = (fun (x : varMatrix) => (1%r / M) * mu1 f x).
-          apply fun_ext.
-          smt().
+          apply fun_ext => /#.
         rewrite rewrite_under_binding.
         rewrite sumZ.
         have mufx_leq_1 : (sum (fun (x : varMatrix) => mu1 f x) <= 1%r).
           rewrite - weightE.
-          apply le1_mu.
+          by apply le1_mu.
         smt().
       smt().
   smt().
