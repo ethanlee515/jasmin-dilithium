@@ -203,10 +203,7 @@ case (v \in h).
     rewrite supportPn in z_no_supp.
     rewrite /bad_event in bad_ev.
     have z_notin_f : mu1 f z = 0%r.
-      rewrite z_no_supp in bad_ev.
-      (* Following line doesn't work *)
-      simplify bad_ev.
-      (* How do I use simplify on a hypothesis? *)
+      rewrite z_no_supp /= in bad_ev.
       have bad_ev' : mu1 f z <= 0%r.
         smt().
       have mu1_non_neg : mu1 f z >= 0%r.
@@ -215,8 +212,7 @@ case (v \in h).
     rewrite z_notin_f /= dA_simpl.
     apply sum0_eq => v_ /=.
     apply sum0_eq => z_ /=.
-    (* How to rewrite all? *)
-    rewrite dunit1E dunit1E => /=.
+    rewrite !dunit1E /=.
     case (z_ = z); 2: smt().
     case (v_ = v); 2: smt().
     move => v_eq z_eq.
@@ -227,8 +223,7 @@ case (v \in h).
   rewrite dA_simpl.
   apply sum0_eq => v_ /=.
   apply sum0_eq => z_ /=.
-  (* How to rewrite all? *)
-  rewrite dunit1E dunit1E.
+  rewrite !dunit1E.
   case (v_ = v); 2: smt().
   move => v_eq.
   by rewrite v_eq v_no_supp //.
@@ -373,12 +368,7 @@ apply (summable_le_pos _ (fun z => mu1 (g v) z + mu1 f z / M)).
   by apply summable_mu1.
 * (* upper sequence is correct *)
   move => z /=.
-  (* -- ANTI-PATTERN? -- *)
-  (* hints for smt...? *)
-  have mu_gv_ge0 : mu1 (g v) z >= 0%r by apply ge0_mu.
-  have mu_fz_ge0 : mu1 f z >= 0%r by apply ge0_mu.
-  have m_pos : M > 0%r by apply M_positive.
-  smt().
+  smt(ge0_mu M_positive).
 qed.
 
 lemma dA_output_something_summable :
@@ -410,6 +400,7 @@ apply (summableM_bound (1%r + 1%r / M) _ _).
       apply ge0_mu.
   rewrite /"`|_|".
   rewrite abs_removable => /=.
+  clear abs_removable.
   have bound_by_sum :
     sum (fun (z : varMatrix) => if bad_event z v then mu1 (g v) z else mu1 f z / M) <=
     sum (fun (z : varMatrix) => mu1 (g v) z + mu1 f z / M).
@@ -457,8 +448,7 @@ apply (summableM_bound (1%r + 1%r / M) _ _).
         have rewrite_under_binding :
           (fun (x : varMatrix) => mu1 f x / M) = (fun (x : varMatrix) => (1%r / M) * mu1 f x).
           apply fun_ext => /#.
-        rewrite rewrite_under_binding.
-        rewrite sumZ.
+        rewrite rewrite_under_binding sumZ.
         have mufx_leq_1 : (sum (fun (x : varMatrix) => mu1 f x) <= 1%r).
           rewrite - weightE.
           by apply le1_mu.
@@ -471,22 +461,21 @@ lemma dA_output_something_lowerbound :
     forall eps, bad_event_unlikely eps =>
     mu dA (fun x => x <> None) >= (1%r - eps) / M.
 proof.
-  have m_pos : M > 0%r by apply M_positive.
-  move => eps bad_event_eps.
-  rewrite (dA_output_something eps).
-    assumption.
-  have first_hop :
-    ((sum (fun (v : V) =>
-      mu1 h v *
-      sum (fun (z : varMatrix) =>
-        if bad_event z v then mu1 (g v) z else mu1 f z / M))) >=
-    (sum (fun (v : V) =>
-      mu1 h v *
-      sum (fun (z : varMatrix) =>
-        if bad_event z v then 0%r else mu1 f z / M)))).
-    apply ler_sum_pos.
-    simplify.
-    move => v.
+have m_pos : M > 0%r by apply M_positive.
+move => eps bad_event_eps.
+rewrite (dA_output_something eps); 1: by assumption.
+have first_hop :
+  ((sum (fun (v : V) =>
+    mu1 h v *
+    sum (fun (z : varMatrix) =>
+      if bad_event z v then mu1 (g v) z else mu1 f z / M))) >=
+  (sum (fun (v : V) =>
+    mu1 h v *
+    sum (fun (z : varMatrix) =>
+      if bad_event z v then 0%r else mu1 f z / M)))).
+  apply ler_sum_pos => /=.
+  (* Each term ineq... *)
+  * move => v.
     split.
     * have product_of_positives :
         forall (a b : real), a >= 0%r => b >= 0%r => a * b >= 0%r.
@@ -494,15 +483,12 @@ proof.
       apply product_of_positives.
       apply ge0_mu.
       apply ge0_sum.
-      move => z.
-      simplify.
+      move => z /=.
       case (bad_event z v).
-      * move => bad_ev.
-        smt().
+      * move => bad_ev /#.
       * have mu1_fz_ge0 : mu1 f z >= 0%r by apply ge0_mu.
         smt().
-    move => unused.
-    clear unused.
+    move => _.
     have left_cancel :
       forall (a b c : real), a >= 0%r => b <= c => a * b <= a * c.
       smt().
@@ -510,22 +496,17 @@ proof.
       apply ge0_mu.
     clear left_cancel.
     apply ler_sum_pos.
-    move => z.
-    have mu1_fz_ge0 : mu1 f z >= 0%r by apply ge0_mu.
-    simplify.
-    case (bad_event z v).
-    * move => bad_ev.
-      split.
-      * smt().
-      * move => unused.
+    * move => z /=.
+      have mu1_fz_ge0 : mu1 f z >= 0%r by apply ge0_mu.
+      case (bad_event z v).
+      * move => bad_ev.
+        split; 1: smt().
+        move => _.
         apply ge0_mu.
-    * move => bad_ev.
-      split.
-      * smt().
-      * smt().
+      * move => bad_ev /#.
     apply dA_output_something_summable_inner.
-    apply dA_output_something_summable.
-  have second_hop :
+  apply dA_output_something_summable.
+have second_hop :
     (sum (fun (v : V) =>
       mu1 h v *
       sum (fun (z : varMatrix) =>
